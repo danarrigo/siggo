@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.vercel/
+drizzle/
+tests/fixtures/
+playwright-report/
+test-results/
+package-lock.json
+next-env.d.ts
