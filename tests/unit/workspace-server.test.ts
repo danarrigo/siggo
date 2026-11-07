@@ -2,7 +2,12 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { catalogSnapshots } from "../../src/db/schema";
-import { type Catalog, type Workspace, defaultWorkspace } from "../../src/lib/model";
+import {
+  type Catalog,
+  type Competition,
+  type Workspace,
+  defaultWorkspace,
+} from "../../src/lib/model";
 import {
   reconcileSavedCompetitions,
   toggleSavedCompetition,
@@ -36,7 +41,7 @@ const baseline = () =>
     },
     item,
   );
-const catalog = (items = [latest]): Catalog => ({
+const catalog = (items: Competition[] = [latest]): Catalog => ({
   competitions: items,
   sources: [],
   updatedAt: "2026-11-02T00:00:00Z",
