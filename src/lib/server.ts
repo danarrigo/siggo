@@ -113,7 +113,8 @@ async function updateWorkspace(userId: string, update: (workspace: Workspace) =>
     const written = stored
       ? await db
           .update(workspaces)
-          .set({ data, updatedAt: new Date() })
+          // Preserve fields unknown to an older deployment still handling an in-flight request.
+          .set({ data: { ...stored.data, ...data }, updatedAt: new Date() })
           .where(
             and(
               eq(workspaces.userId, userId),

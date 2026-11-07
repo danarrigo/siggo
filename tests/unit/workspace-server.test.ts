@@ -173,6 +173,12 @@ it("a stale client's full workspace cannot erase server-owned snapshots, updates
   expect(row?.lastVisitedAt).toBe(previousVisit);
 });
 
+it("preserves unknown fields from a newer deployment during an in-flight older request", async () => {
+  row = Object.assign(baseline(), { futureSetting: { keep: true } });
+  await saveWorkspace("owner", defaultWorkspace, ["profile"]);
+  expect(row).toHaveProperty("futureSetting", { keep: true });
+});
+
 it("legacy clients only edit fields explicitly supplied", async () => {
   await saveWorkspace(
     "owner",
