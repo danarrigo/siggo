@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { unstable_cache } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { catalogSnapshots, workspaces } from "@/db/schema";
 import { authConfigured, getAuth, allowedEmail, localPreview } from "./auth";
@@ -15,10 +15,13 @@ import {
   type Workspace,
   catalogForSources,
   defaultWorkspace,
-  isActive,
   sourceIds,
   workspaceSchema,
 } from "./model";
+import {
+  acknowledgeDeadlineChanges as acknowledgeChanges,
+  reconcileSavedCompetitions,
+} from "./saved-competitions";
 
 const enabledSourceIds = sourceDefinitions.map((source) => source.id);
 
@@ -65,7 +68,7 @@ export async function loadCatalog(): Promise<Catalog> {
       )
     ) {
       const catalog = catalogForSources(snapshot.data, enabledSourceIds);
-      return { ...catalog, competitions: catalog.competitions.filter((item) => isActive(item)) };
+      return catalog;
     }
     return refreshCatalog();
   }
@@ -76,6 +79,17 @@ export async function refreshCatalog(): Promise<Catalog> {
   const db = getDb();
   const [old] = await db.select().from(catalogSnapshots).where(eq(catalogSnapshots.id, "current"));
   const catalog = await collectCatalog(old?.data);
+  // Preserve legacy bookmarks from the old snapshot before ended records disappear.
+  // If tracking fails, keep that public snapshot available for a safe retry.
+  const trackingCatalog = {
+    ...catalog,
+    competitions: [...(old?.data.competitions ?? []), ...catalog.competitions],
+  };
+  const owners = await db
+    .select({ userId: workspaces.userId })
+    .from(workspaces)
+    .where(sql`jsonb_array_length(coalesce(${workspaces.data}->'saved', '[]'::jsonb)) > 0`);
+  for (const owner of owners) await loadWorkspace(owner.userId, trackingCatalog);
   const updatedAt = new Date(catalog.updatedAt);
   await db
     .insert(catalogSnapshots)
@@ -88,26 +102,72 @@ export async function refreshCatalog(): Promise<Catalog> {
   return catalog;
 }
 
-export async function loadWorkspace(userId: string): Promise<Workspace> {
+async function updateWorkspace(userId: string, update: (workspace: Workspace) => Workspace) {
+  const db = getDb();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const [stored] = await db.select().from(workspaces).where(eq(workspaces.userId, userId));
+    const current = stored ? workspaceSchema.parse(stored.data) : defaultWorkspace;
+    const next = update(current);
+    if (next === current) return current;
+    const data = workspaceSchema.parse(next);
+    const written = stored
+      ? await db
+          .update(workspaces)
+          .set({ data, updatedAt: new Date() })
+          .where(
+            and(
+              eq(workspaces.userId, userId),
+              sql`${workspaces.data} = ${JSON.stringify(stored.data)}::jsonb`,
+            ),
+          )
+          .returning({ userId: workspaces.userId })
+      : await db
+          .insert(workspaces)
+          .values({ userId, data })
+          .onConflictDoNothing()
+          .returning({ userId: workspaces.userId });
+    if (written.length) return data;
+  }
+  throw new Error("Workspace changed concurrently. Retry the operation.");
+}
+
+export async function loadWorkspace(userId: string, catalog?: Catalog): Promise<Workspace> {
+  if (catalog)
+    return updateWorkspace(userId, (workspace) =>
+      reconcileSavedCompetitions(workspace, catalog.competitions),
+    );
   const [workspace] = await getDb().select().from(workspaces).where(eq(workspaces.userId, userId));
   return workspace ? workspaceSchema.parse(workspace.data) : defaultWorkspace;
 }
 export async function saveWorkspace(userId: string, data: Workspace, fields = Object.keys(data)) {
-  // Older open tabs do not know about notes/personal listings. Merge only fields they sent.
+  const managed = new Set([
+    "lastVisitedAt",
+    "savedSnapshots",
+    "deadlineChanges",
+    "trackingLimited",
+  ]);
+  // Older tabs can edit content, but cannot erase newer tracking state or other absent fields.
   const edits = Object.fromEntries(
-    Object.entries(data).filter(([key]) => key !== "lastVisitedAt" && fields.includes(key)),
+    Object.entries(data).filter(([key]) => !managed.has(key) && fields.includes(key)),
   );
-  await getDb()
-    .insert(workspaces)
-    .values({ userId, data: { ...data, lastVisitedAt: null } })
-    .onConflictDoUpdate({
-      target: workspaces.userId,
-      // Visit tracking is independent of edits and must not be rolled back by a stale form.
-      set: {
-        data: sql`${workspaces.data} || ${JSON.stringify(edits)}::jsonb`,
-        updatedAt: new Date(),
-      },
-    });
+  const [catalog] = await getDb()
+    .select()
+    .from(catalogSnapshots)
+    .where(eq(catalogSnapshots.id, "current"));
+  await updateWorkspace(userId, (current) => {
+    const next = { ...current, ...edits };
+    const snapshots = new Map(Object.entries(current.savedSnapshots));
+    for (const id of next.saved)
+      if (!snapshots.has(id) && Object.hasOwn(data.savedSnapshots, id))
+        snapshots.set(id, data.savedSnapshots[id]);
+    return reconcileSavedCompetitions(
+      { ...next, savedSnapshots: Object.fromEntries(snapshots) },
+      catalog?.data.competitions ?? [],
+    );
+  });
+}
+export async function acknowledgeWorkspaceDeadlineChanges(userId: string, ids: string[]) {
+  await updateWorkspace(userId, (workspace) => acknowledgeChanges(workspace, ids));
 }
 
 export async function markWorkspaceVisited(userId: string) {

@@ -16,7 +16,18 @@ export type SourceId = (typeof sourceIds)[number];
 export const categories = ["ML / Data science", "Hackathon", "Research challenge"] as const;
 export type Category = (typeof categories)[number];
 
-const date = z.union([z.iso.datetime({ offset: true }), z.iso.date()]).nullable();
+const dateValue = z.union([z.iso.datetime({ offset: true }), z.iso.date()]);
+const date = dateValue.nullable();
+export const maxWorkspaceSize = 1_000_000;
+export const deadlineChangeSchema = z.object({
+  id: z.string().min(1).max(900),
+  competitionId: z.string().min(1).max(250),
+  field: z.enum(["registrationEndsAt", "submissionEndsAt", "challengeEndsAt", "eventEndsAt"]),
+  before: date,
+  after: dateValue,
+  observedAt: z.iso.datetime({ offset: true }),
+});
+export type DeadlineChange = z.infer<typeof deadlineChangeSchema>;
 export const competitionSchema = z.object({
   id: z.string().min(1),
   source: z.enum([...sourceIds, "manual"]),
@@ -116,8 +127,20 @@ export const workspaceSchema = z
       .default({}),
     manualCompetitions: z.array(manualCompetitionSchema).max(100).default([]),
     lastVisitedAt: z.iso.datetime({ offset: true }).nullable().default(null),
+    savedSnapshots: z
+      .record(z.string().min(1).max(250), competitionSchema)
+      .refine(
+        (snapshots) => Object.entries(snapshots).every(([id, item]) => id === item.id),
+        "Saved snapshot identity does not match its key",
+      )
+      .default({}),
+    deadlineChanges: z.array(deadlineChangeSchema).max(2000).default([]),
+    trackingLimited: z.boolean().default(false),
   })
-  .refine((workspace) => JSON.stringify(workspace).length <= 250_000, "Workspace is too large");
+  .refine(
+    (workspace) => JSON.stringify(workspace).length <= maxWorkspaceSize,
+    "Workspace is too large",
+  );
 export type Workspace = z.infer<typeof workspaceSchema>;
 export const defaultWorkspace: Workspace = workspaceSchema.parse({
   profile: defaultProfile,

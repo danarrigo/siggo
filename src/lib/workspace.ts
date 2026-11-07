@@ -1,16 +1,19 @@
 import {
   type Competition,
   type Workspace,
+  canonicalUrl,
   deadlineTime,
-  deduplicate,
   isActive,
   isDateOnly,
 } from "./model";
+import { competitionLibrary, reconcileSavedCompetitions } from "./saved-competitions";
 
 export function workspaceCompetitions(catalog: Competition[], workspace: Workspace, now: number) {
-  // Keep a personal listing's ID and notes if a connected source later discovers the same URL.
-  return deduplicate(
-    [...workspace.manualCompetitions, ...catalog].filter((item) => isActive(item, now)),
+  const currentUrls = new Set(catalog.map((item) => canonicalUrl(item.url)));
+  // Private fallbacks stay in Saved, never resurrecting source-removed records in discovery.
+  return competitionLibrary(catalog, workspace, now).filter(
+    (item) =>
+      isActive(item, now) && (item.source === "manual" || currentUrls.has(canonicalUrl(item.url))),
   );
 }
 
@@ -55,11 +58,14 @@ export function deadlineReminders(items: Competition[], saved: string[], now: nu
 export function withoutManualCompetition(workspace: Workspace, id: string): Workspace {
   const notes = { ...workspace.notes };
   delete notes[id];
-  return {
-    ...workspace,
-    manualCompetitions: workspace.manualCompetitions.filter((item) => item.id !== id),
-    saved: workspace.saved.filter((value) => value !== id),
-    dismissed: workspace.dismissed.filter((value) => value !== id),
-    notes,
-  };
+  return reconcileSavedCompetitions(
+    {
+      ...workspace,
+      manualCompetitions: workspace.manualCompetitions.filter((item) => item.id !== id),
+      saved: workspace.saved.filter((value) => value !== id),
+      dismissed: workspace.dismissed.filter((value) => value !== id),
+      notes,
+    },
+    [],
+  );
 }

@@ -73,8 +73,13 @@ describe("private workspace additions", () => {
       workspaceSchema.safeParse({
         ...workspace,
         notes: Object.fromEntries(
-          Array.from({ length: 70 }, (_, i) => [String(i), "x".repeat(4000)]),
+          Array.from({ length: 200 }, (_, i) => [String(i), "x".repeat(4000)]),
         ),
+        manualCompetitions: Array.from({ length: 100 }, (_, i) => ({
+          ...personal,
+          id: `manual:${i}`,
+          description: "x".repeat(2000),
+        })),
       }).success,
     ).toBe(false);
   });

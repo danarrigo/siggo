@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark } from "lucide-react";
-import { type Competition, deadlineTime, endDate } from "@/lib/model";
+import { type Competition, deadlineTime, endDate, isActive } from "@/lib/model";
 import { formatDate, relativeDeadline, type rankCompetition } from "@/lib/ranking";
 import { CompetitionCover } from "./competition-cover";
 
@@ -32,6 +32,7 @@ export function CompetitionCard({
   eagerArtwork = false,
   isNew = false,
   hasNote = false,
+  snapshot = false,
   onSave,
   onDismiss,
   onOpen,
@@ -43,10 +44,12 @@ export function CompetitionCard({
   eagerArtwork?: boolean;
   isNew?: boolean;
   hasNote?: boolean;
+  snapshot?: boolean;
   onSave: () => void;
   onDismiss: () => void;
   onOpen: () => void;
 }) {
+  const archived = !isActive(item, now);
   const end = endDate(item);
   const relative = relativeDeadline(end, now);
   const date =
@@ -66,7 +69,7 @@ export function CompetitionCard({
   const closed =
     item.registrationOpen === false ||
     Boolean(item.registrationEndsAt && deadlineTime(item.registrationEndsAt) <= now);
-  const soon = Boolean(end && deadlineTime(end) - now < 7 * 86400000);
+  const soon = !archived && Boolean(end && deadlineTime(end) - now < 7 * 86400000);
   const reward = item.reward?.replace(/\b(usd|eur|gbp)\b/gi, (currency) => currency.toUpperCase());
 
   return (
@@ -86,7 +89,9 @@ export function CompetitionCard({
           <span>{categoryNames[item.category]}</span>
           {isNew && <span className="new-listing">New</span>}
           {hasNote && <span className="note-indicator">Has note</span>}
-          {closed && <span className="registration-closed">Registration closed</span>}
+          {archived && !snapshot && <span className="snapshot-indicator">Archived</span>}
+          {snapshot && <span className="snapshot-indicator">Saved snapshot</span>}
+          {!archived && closed && <span className="registration-closed">Registration closed</span>}
         </div>
         <h2>
           <button onClick={onOpen}>{item.title}</button>
@@ -115,7 +120,7 @@ export function CompetitionCard({
         </div>
       </div>
       <div className={`timeline-column ${soon ? "closing-soon" : ""}`}>
-        <span className="column-label">Ends</span>
+        <span className="column-label">{archived ? "Ended" : "Ends"}</span>
         <strong>{date}</strong>
         <span>{dateNote}</span>
       </div>

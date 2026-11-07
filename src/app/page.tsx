@@ -42,10 +42,8 @@ export default async function Home() {
         </section>
       </div>
     );
-  const [catalog, workspace] = await Promise.all([
-    loadCatalog(),
-    user ? loadWorkspace(user.id) : Promise.resolve(defaultWorkspace),
-  ]);
+  const catalog = await loadCatalog();
+  const workspace = user ? await loadWorkspace(user.id, catalog) : defaultWorkspace;
   // eslint-disable-next-line react-hooks/purity -- Dynamic RSC takes one request-time snapshot, not a client render-time clock.
   const now = Date.now();
   return (

@@ -26,6 +26,8 @@ Defaults: Indonesia, student, DGX Spark, games/simulation and finance, online-fi
 - Saving and marking an opportunity less relevant; neither deletes it from All.
 - New-since-last-visit badges and a New view, with an explicit Mark all seen action. Discovery dates survive source refreshes and outages; the first visit establishes a baseline.
 - In-app reminders for saved registration, submission, challenge-end, and event-end dates in the next seven days. No email or push delivery; unlisted closing times stay unlisted.
+- In-app deadline-change alerts in the reminders bell. Saved listings establish a baseline; later observed dates are compared separately by deadline type. Unread changes coalesce until marked read. Omitted dates and missing listings are not treated as confirmed deadline removals.
+- Saved > Archive keeps past saved opportunities and editable notes using private, last-known snapshots, even after a source stops listing them. A missing listing alone never means ended; its snapshot stays under Current in Saved, not back in public discovery. Older bookmarks without retained metadata still expose their notes, without invented details.
 - Private manual listings with editable calendar dates and deletion, plus private notes on any competition. Personal links are never scraped or refreshed automatically; ended personal listings remain accessible through Manage personal listings.
 - Editable interests and participation preferences, persisted locally or to Postgres when signed in.
 - Source health, scope limitations, last successful checks, and preserved snapshots on source failure.
@@ -158,10 +160,11 @@ The security overrides in `package.json` patch vulnerable transitive minimatch/e
 - `src/lib/model.ts`: validated catalog and workspace domain types.
 - `src/lib/ranking.ts`: deterministic, explainable personalization.
 - `src/lib/workspace.ts`, `src/lib/workspace-store.ts`: personal listings, deadline reminders, visit tracking, and serialized local/cloud persistence.
+- `src/lib/saved-competitions.ts`: private saved snapshots, archived listing recovery, and observed deadline changes.
 - `src/lib/sources/`: source-specific parsing and bounded, failure-aware collection.
 - `src/lib/server.ts`: public-source caching and durable catalog/workspace storage.
 - `src/lib/auth.ts`, `src/lib/request-security.ts`: private login and mutation boundaries.
 - `src/db/schema.ts`, `drizzle/`: database schema and generated migrations.
 - `src/components/`: discovery UI and accessible shadcn/Base UI dialogs.
 
-Catalog snapshots are stored atomically as JSONB because this is a single-user, client-filtered catalog, not a multi-tenant search service. Failed sources retain their prior records with explicit unavailable/stale state. Workspace writes are serialized per browser; concurrent edits from different devices are last-write-wins.
+Catalog snapshots are stored atomically as JSONB because this is a single-user, client-filtered catalog, not a multi-tenant search service. Failed sources retain their prior records with explicit unavailable/stale state. Workspace writes are serialized per browser; concurrent content edits from different devices are last-write-wins for the explicitly supplied fields. Source refreshes update saved snapshots even while the owner is away. Tracking and read acknowledgements use compare-and-swap retries and cannot overwrite concurrent notes, bookmarks, or visit markers; stale clients cannot replace server-owned tracking fields. Snapshots and notes fit the existing workspace JSONB, so these features need no database migration. The total workspace limit is one million serialized characters; if automatic tracking reaches it, existing details remain intact and a warning asks the owner to free space. Dates or changes never observed by an available source cannot be recovered retroactively.

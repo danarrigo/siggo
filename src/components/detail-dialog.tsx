@@ -21,6 +21,8 @@ export function DetailDialog({
   profile,
   saved,
   note,
+  snapshot = false,
+  archived = false,
   onSave,
   onSaveNote,
   onEdit,
@@ -31,6 +33,8 @@ export function DetailDialog({
   profile: Profile;
   saved: boolean;
   note: string;
+  snapshot?: boolean;
+  archived?: boolean;
   onSave: () => void;
   onSaveNote: (value: string) => boolean;
   onEdit?: () => void;
@@ -70,6 +74,16 @@ export function DetailDialog({
           />
           <DialogDescription>{item.description}</DialogDescription>
         </DialogHeader>
+        {(snapshot || archived) && (
+          <div className="saved-snapshot-notice">
+            <strong>{archived ? "Archived saved listing" : "Saved snapshot"}</strong>
+            <p>
+              {snapshot
+                ? "Saved snapshot of last-known details, including earlier published dates. This listing is not currently verified as active. Check the official page for changes."
+                : "The last-known end date has passed. Your notes are still available below."}
+            </p>
+          </div>
+        )}
         <section className="match-explanation">
           <h3>Why this is listed</h3>
           {rank.reasons.length ? (
@@ -180,7 +194,11 @@ export function DetailDialog({
           </form>
         </section>
         <p className="source-provenance">
-          {item.source === "manual" ? "Personal listing last edited" : "Listing last checked"}{" "}
+          {item.source === "manual"
+            ? "Personal listing last edited"
+            : snapshot
+              ? "Saved details last seen"
+              : "Listing last checked"}{" "}
           {formatDate(item.lastSeenAt, true)}. The organizer&apos;s current rules always take
           precedence.
         </p>

@@ -33,6 +33,7 @@ import {
   categories,
   deadlineTime,
   endDate,
+  isActive,
 } from "@/lib/model";
 import { formatDate, rankCompetition } from "@/lib/ranking";
 import { CompetitionCard } from "./competition-card";
@@ -48,6 +49,8 @@ import {
   withoutManualCompetition,
   workspaceCompetitions,
 } from "@/lib/workspace";
+import { competitionLibrary, toggleSavedCompetition } from "@/lib/saved-competitions";
+import { UnavailableSavedCompetition } from "./unavailable-saved-competition";
 
 const authClient = createAuthClient();
 type View = "For you" | "All competitions" | "Saved" | "New";
@@ -77,7 +80,13 @@ export function Dashboard({
       document.removeEventListener("visibilitychange", tick);
     };
   }, []);
-  const [store] = useState(() => createWorkspaceStore(initialWorkspace, mode, now));
+  const [store] = useState(() =>
+    createWorkspaceStore(initialWorkspace, mode, now, catalog.competitions),
+  );
+  useEffect(
+    () => store.synchronize(catalog.competitions, initialWorkspace),
+    [store, catalog.competitions, initialWorkspace],
+  );
   const {
     workspace,
     since,
@@ -86,6 +95,7 @@ export function Dashboard({
     ready,
   } = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
   const [view, setView] = useState<View>("For you");
+  const [savedView, setSavedView] = useState<"active" | "archive">("active");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All types");
   const [source, setSource] = useState("all");
@@ -99,19 +109,43 @@ export function Dashboard({
   const [syncMessage, setSyncMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const library = useMemo(
+    () => competitionLibrary(catalog.competitions, workspace, now),
+    [catalog.competitions, workspace, now],
+  );
   const items = useMemo(
     () => workspaceCompetitions(catalog.competitions, workspace, now),
     [catalog.competitions, workspace, now],
   );
-  const reminders = deadlineReminders(items, workspace.saved, now);
+  const discoverableIds = new Set(items.map((item) => item.id));
+  const reminders = deadlineReminders(
+    library.filter((item) => isActive(item, now)),
+    workspace.saved,
+    now,
+  );
+  const updateCount = reminders.length + workspace.deadlineChanges.length;
+  const currentItems = new Map(catalog.competitions.map((item) => [canonicalUrl(item.url), item]));
+  const snapshotOnly = (item: (typeof library)[number]) => {
+    const current = currentItems.get(canonicalUrl(item.url));
+    return (
+      item.source !== "manual" &&
+      (!isActive(item, now) ||
+        !current ||
+        Date.parse(current.lastSeenAt) < Date.parse(item.lastSeenAt))
+    );
+  };
   const newCount = items.filter((item) => isNewCompetition(item, since, now)).length;
   const ranked = useMemo(
-    () => items.map((item) => ({ item, rank: rankCompetition(item, workspace, items, now) })),
-    [items, workspace, now],
+    () => library.map((item) => ({ item, rank: rankCompetition(item, workspace, items, now) })),
+    [library, items, workspace, now],
   );
   const visible = ranked
     .filter(({ item }) => {
-      if (view === "Saved" && !workspace.saved.includes(item.id)) return false;
+      const active = isActive(item, now);
+      if (view === "Saved") {
+        if (!workspace.saved.includes(item.id) || active === (savedView === "archive"))
+          return false;
+      } else if (!discoverableIds.has(item.id)) return false;
       if (view === "New" && !isNewCompetition(item, since, now)) return false;
       if (category !== "All types" && item.category !== category) return false;
       if (source !== "all" && item.source !== source) return false;
@@ -123,8 +157,9 @@ export function Dashboard({
     .sort((a, b) =>
       sort === "relevance"
         ? b.rank.score - a.rank.score || a.item.title.localeCompare(b.item.title)
-        : (endDate(a.item) ? deadlineTime(endDate(a.item)!) : Infinity) -
-            (endDate(b.item) ? deadlineTime(endDate(b.item)!) : Infinity) ||
+        : ((endDate(a.item) ? deadlineTime(endDate(a.item)!) : Infinity) -
+            (endDate(b.item) ? deadlineTime(endDate(b.item)!) : Infinity)) *
+            (view === "Saved" && savedView === "archive" ? -1 : 1) ||
           a.item.title.localeCompare(b.item.title),
     );
   const selected = ranked.find(({ item }) => item.id === selectedId);
@@ -133,25 +168,39 @@ export function Dashboard({
   const liveSources = currentSources.filter(
     (item) => ["healthy", "partial"].includes(item.state) && sourceState(item, now) !== "Stale",
   ).length;
-  const savedCount = items.filter((item) => workspace.saved.includes(item.id)).length;
+  const savedCount = new Set(workspace.saved).size;
+  const archivedCount = library.filter(
+    (item) => workspace.saved.includes(item.id) && !isActive(item, now),
+  ).length;
+  const unavailableIds = [...new Set(workspace.saved)].filter(
+    (id) => !library.some((item) => item.id === id),
+  );
+  const unavailable =
+    view === "Saved" && savedView === "active" && category === "All types"
+      ? unavailableIds.filter(
+          (id) =>
+            (source === "all" || id.startsWith(`${source}:`)) &&
+            `${id} ${workspace.notes[id] ?? ""}`.toLowerCase().includes(query.toLowerCase().trim()),
+        )
+      : [];
   const hasFilters = query || category !== "All types" || source !== "all";
 
   function changeView(next: View) {
     setView(next);
     setLimit(18);
-    setSort(next === "All competitions" ? "deadline" : "relevance");
+    setSort(
+      next === "All competitions" || (next === "Saved" && savedView === "archive")
+        ? "deadline"
+        : "relevance",
+    );
   }
   function persist(change: (previous: Workspace) => Workspace) {
     setSyncMessage("");
     return store.update(change);
   }
   function toggleSaved(id: string) {
-    persist((previous) => ({
-      ...previous,
-      saved: previous.saved.includes(id)
-        ? previous.saved.filter((item) => item !== id)
-        : [...previous.saved, id],
-    }));
+    const item = library.find((item) => item.id === id);
+    if (item) persist((previous) => toggleSavedCompetition(previous, item));
   }
   function toggleDismissed(id: string) {
     persist((previous) => ({
@@ -160,6 +209,14 @@ export function Dashboard({
         ? previous.dismissed.filter((item) => item !== id)
         : [...previous.dismissed, id],
     }));
+  }
+  function saveNote(id: string, note: string) {
+    return persist((previous) => {
+      const notes = { ...previous.notes };
+      if (note.trim()) notes[id] = note;
+      else delete notes[id];
+      return { ...previous, notes };
+    });
   }
   function saveManual(item: ManualCompetition) {
     const duplicate = items.find(
@@ -196,6 +253,9 @@ export function Dashboard({
     setSyncing(true);
     setSyncMessage("Checking sources…");
     try {
+      await store.whenIdle();
+      if (store.getSnapshot().unsynced)
+        throw new Error("Sync your workspace changes before refreshing sources.");
       const response = await fetch("/api/sync", { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not refresh the catalog");
@@ -232,11 +292,11 @@ export function Dashboard({
             </span>
             <button
               className="reminders-trigger"
-              aria-label={`View deadline reminders${reminders.length ? ` (${reminders.length})` : ""}`}
+              aria-label={`View deadline reminders and updates${updateCount ? ` (${updateCount})` : ""}`}
               onClick={() => setRemindersOpen(true)}
             >
               <Bell size={17} />
-              {reminders.length > 0 && <span>{reminders.length}</span>}
+              {updateCount > 0 && <span>{updateCount}</span>}
             </button>
             <button
               onClick={() => setCoverageOpen(true)}
@@ -286,7 +346,11 @@ export function Dashboard({
                 <span>Add</span>
               </Button>
             </div>
-            <p className="directory-intro">Active and upcoming, across your connected sources.</p>
+            <p className="directory-intro">
+              {view === "Saved" && savedView === "archive"
+                ? "Ended saved competitions, with your notes kept."
+                : "Active and upcoming, across your connected sources."}
+            </p>
           </div>
           <div className="profile-summary">
             <span>
@@ -331,6 +395,35 @@ export function Dashboard({
             <div className="new-listings-summary">
               <p>Discovered since your previous visit. Your first visit establishes a baseline.</p>
               {newCount > 0 && <button onClick={() => store.markSeen()}>Mark all seen</button>}
+            </div>
+          )}
+          {workspace.trackingLimited && (
+            <p className="tracking-warning" role="alert">
+              Saved-list tracking has reached the workspace limit. Remove saved entries or shorten
+              notes to resume it. Existing details and notes are kept.
+            </p>
+          )}
+          {view === "Saved" && (
+            <div className="saved-view-controls" role="group" aria-label="Saved competition status">
+              {(["active", "archive"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  aria-pressed={savedView === tab}
+                  onClick={() => {
+                    setSavedView(tab);
+                    setSort(tab === "archive" ? "deadline" : "relevance");
+                    setLimit(18);
+                  }}
+                >
+                  {tab === "active" ? "Current" : "Archive"}{" "}
+                  <span>{tab === "active" ? savedCount - archivedCount : archivedCount}</span>
+                </button>
+              ))}
+              <p>
+                {savedView === "archive"
+                  ? "Ended listings stay here with their notes."
+                  : "A missing listing is not assumed ended."}
+              </p>
             </div>
           )}
           <div className="filter-toolbar">
@@ -388,7 +481,11 @@ export function Dashboard({
                 onChange={(event) => setSort(event.target.value)}
               >
                 <option value="relevance">Relevance</option>
-                <option value="deadline">Ending soonest</option>
+                <option value="deadline">
+                  {view === "Saved" && savedView === "archive"
+                    ? "Recently ended"
+                    : "Ending soonest"}
+                </option>
               </select>
             </label>
           </div>
@@ -415,13 +512,19 @@ export function Dashboard({
               ))}
             </div>
             <p className="results-count" aria-live="polite">
-              <strong>{visible.length}</strong>{" "}
-              {view === "Saved" ? "saved" : visible.length === 1 ? "competition" : "competitions"}
+              <strong>{visible.length + unavailable.length}</strong>{" "}
+              {view === "Saved"
+                ? savedView === "archive"
+                  ? "archived"
+                  : "saved"
+                : visible.length === 1
+                  ? "competition"
+                  : "competitions"}
             </p>
           </div>
           <div className="list-labels" aria-hidden="true">
             <span>COMPETITION</span>
-            <span>ENDS</span>
+            <span>{view === "Saved" && savedView === "archive" ? "ENDED" : "ENDS"}</span>
             <span>PRIZE / REWARD</span>
             <span />
           </div>
@@ -436,19 +539,36 @@ export function Dashboard({
                 eagerArtwork={index < 4}
                 isNew={isNewCompetition(item, since, now)}
                 hasNote={Boolean(workspace.notes[item.id])}
+                snapshot={snapshotOnly(item)}
                 onSave={() => toggleSaved(item.id)}
                 onDismiss={() => toggleDismissed(item.id)}
                 onOpen={() => setSelectedId(item.id)}
               />
             ))}
           </div>
-          {!visible.length && (
+          {unavailable.map((id) => (
+            <UnavailableSavedCompetition
+              key={id}
+              id={id}
+              note={workspace.notes[id] ?? ""}
+              onSaveNote={(note) => saveNote(id, note)}
+              onUnsave={() =>
+                persist((previous) => ({
+                  ...previous,
+                  saved: previous.saved.filter((value) => value !== id),
+                }))
+              }
+            />
+          ))}
+          {!visible.length && !unavailable.length && (
             <div className="empty-state">
               <h2>
                 {view === "New" && !hasFilters
                   ? "No new competitions"
                   : view === "Saved" && !hasFilters
-                    ? "No saved competitions"
+                    ? savedView === "archive"
+                      ? "No archived competitions"
+                      : "No saved competitions"
                     : !items.length
                       ? "No competitions available"
                       : "No matching competitions"}
@@ -457,7 +577,9 @@ export function Dashboard({
                 {view === "New" && !hasFilters
                   ? "New discoveries will appear here after your next source update."
                   : view === "Saved" && !hasFilters
-                    ? "Use the bookmark beside a competition to save it here."
+                    ? savedView === "archive"
+                      ? "Ended saved competitions will appear here automatically. Your notes are kept."
+                      : "Use the bookmark beside a competition to save it here."
                     : !items.length
                       ? "Check source coverage or try refreshing the catalog."
                       : "Try a different search or clear the filters."}
@@ -511,7 +633,7 @@ export function Dashboard({
           aria-live="polite"
         >
           {syncing ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-          <span>{syncMessage || saveStatus}</span>
+          <span>{unsynced ? saveStatus : syncMessage || saveStatus}</span>
           {unsynced && <button onClick={() => store.retry()}>Retry save</button>}
           <button
             aria-label="Dismiss status"
@@ -542,15 +664,10 @@ export function Dashboard({
           profile={workspace.profile}
           saved={workspace.saved.includes(selected.item.id)}
           note={workspace.notes[selected.item.id] ?? ""}
+          snapshot={snapshotOnly(selected.item)}
+          archived={!isActive(selected.item, now)}
           onSave={() => toggleSaved(selected.item.id)}
-          onSaveNote={(note) =>
-            persist((previous) => {
-              const notes = { ...previous.notes };
-              if (note.trim()) notes[selected.item.id] = note;
-              else delete notes[selected.item.id];
-              return { ...previous, notes };
-            })
-          }
+          onSaveNote={(note) => saveNote(selected.item.id, note)}
           onEdit={
             selectedManual
               ? () => {
@@ -574,6 +691,10 @@ export function Dashboard({
       {remindersOpen && (
         <RemindersDialog
           reminders={reminders}
+          changes={workspace.deadlineChanges}
+          competitions={library}
+          snapshotIds={new Set(library.filter(snapshotOnly).map((item) => item.id))}
+          onAcknowledge={(ids) => store.acknowledgeChanges(ids)}
           onClose={() => setRemindersOpen(false)}
           onOpen={(id) => {
             setRemindersOpen(false);
