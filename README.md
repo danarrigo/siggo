@@ -72,6 +72,12 @@ Public artwork comes from listing/API metadata; no additional page crawling is n
 
 Only public event metadata is collected, with source attribution and official links. Descriptions are stripped of HTML, outgoing links require HTTPS, and redirects/untrusted pagination targets are not followed. Deduplication uses canonical URLs rather than similar titles, so tracks and editions stay distinct.
 
+## Source control and automatic deployments
+
+The private repository is [danarrigo/signal](https://github.com/danarrigo/signal). Pushes to `main` run GitHub checks and automatically deploy through the connected Vercel project; pull requests get checks and Vercel previews. CI and deployment run independently.
+
+Production credentials stay in Vercel and git-ignored local environment files, not GitHub Actions. Preview deployments do not receive the production database or private OAuth credentials.
+
 ## Deploy privately on Vercel
 
 Production intentionally shows a setup screen until private authentication is configured. Do not make database or API secrets `NEXT_PUBLIC_*` variables.
