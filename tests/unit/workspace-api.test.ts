@@ -9,8 +9,8 @@ const server = vi.hoisted(() => ({
 vi.mock("../../src/lib/server", () => server);
 import { PATCH, PUT } from "../../src/app/api/workspace/route";
 
-function request(method: string, data?: unknown, origin = "https://signal.example") {
-  return new Request("https://signal.example/api/workspace", {
+function request(method: string, data?: unknown, origin = "https://siggo.example") {
+  return new Request("https://siggo.example/api/workspace", {
     method,
     headers: { origin, "Content-Type": "application/json" },
     ...(data === undefined ? {} : { body: JSON.stringify(data) }),

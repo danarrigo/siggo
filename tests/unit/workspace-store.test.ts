@@ -25,6 +25,26 @@ describe("workspace persistence and visits", () => {
     expect(request).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
   });
+  it("migrates the old brand key without discarding bookmarks, notes, or the recovery copy", () => {
+    const previous = { ...defaultWorkspace, saved: ["one"], notes: { one: "Keep" } };
+    const serialized = JSON.stringify(previous);
+    values.set("signal-workspace-v1", serialized);
+    const store = createWorkspaceStore(defaultWorkspace, "local", now);
+    store.subscribe(() => {});
+    expect(store.getSnapshot().workspace).toMatchObject({ saved: ["one"], notes: { one: "Keep" } });
+    expect(JSON.parse(values.get(workspaceStorageKey)!)).toMatchObject({
+      saved: ["one"],
+      notes: { one: "Keep" },
+    });
+    expect(values.get("signal-workspace-v1")).toBe(serialized);
+  });
+  it("prefers an existing Siggo workspace over the legacy recovery copy", () => {
+    values.set("signal-workspace-v1", JSON.stringify({ ...defaultWorkspace, saved: ["old"] }));
+    values.set(workspaceStorageKey, JSON.stringify({ ...defaultWorkspace, saved: ["new"] }));
+    const store = createWorkspaceStore(defaultWorkspace, "local", now);
+    store.subscribe(() => {});
+    expect(store.getSnapshot().workspace.saved).toEqual(["new"]);
+  });
   it("hydrates legacy local data, captures the previous visit once, and retains it during this visit", () => {
     const previous = "2026-11-01T00:00:00Z";
     values.set(

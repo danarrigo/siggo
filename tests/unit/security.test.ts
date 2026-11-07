@@ -45,11 +45,11 @@ describe("private workspace boundary", () => {
       "AUTH_ALLOWED_EMAIL",
     ])
       vi.stubEnv(key, "configured");
-    vi.stubEnv("BETTER_AUTH_URL", "https://signal.example");
+    vi.stubEnv("BETTER_AUTH_URL", "https://siggo.example");
     expect(
       sameOrigin(
         new Request("http://internal/api/workspace", {
-          headers: { origin: "https://signal.example", host: "evil.example" },
+          headers: { origin: "https://siggo.example", host: "evil.example" },
         }),
       ),
     ).toBe(true);

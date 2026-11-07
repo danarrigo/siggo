@@ -112,7 +112,7 @@ export function rankCompetition(
     : topics.length &&
         !cautions.includes("Registration closed") &&
         item.participation !== "In person"
-      ? "Strong signal"
+      ? "Strong match"
       : "Explore";
   return { score, reasons, cautions, label, topics };
 }

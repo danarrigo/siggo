@@ -2,6 +2,31 @@ import { expect, test } from "./test";
 import AxeBuilder from "@axe-core/playwright";
 import { defaultWorkspace } from "../../src/lib/model";
 
+test("Siggo branding preserves the previous browser workspace", async ({ page }) => {
+  const previous = {
+    ...defaultWorkspace,
+    saved: ["drivendata:finance"],
+    notes: { "drivendata:finance": "Keep this private note" },
+  };
+  await page.addInitScript((workspace) => {
+    if (!localStorage.getItem("signal-workspace-v1"))
+      localStorage.setItem("signal-workspace-v1", JSON.stringify(workspace));
+  }, previous);
+  await page.goto("/");
+  await expect(page).toHaveTitle("Siggo | Competition index");
+  await expect(page.getByRole("link", { name: "Siggo home" })).toHaveText("siggo");
+  await page.getByRole("button", { name: /^Saved 1$/ }).click();
+  await page.getByRole("button", { name: "Forecast the Financial Frontier", exact: true }).click();
+  await expect(page.getByRole("dialog").getByLabel("Private note")).toHaveValue(
+    "Keep this private note",
+  );
+  const migrated = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("siggo-workspace-v1")!),
+  );
+  expect(migrated.saved).toEqual(previous.saved);
+  expect(migrated.notes).toEqual(previous.notes);
+});
+
 test("filters cannot lose an interaction before hydration", async ({ page }) => {
   let release = () => {};
   const ready = new Promise<void>((resolve) => {
@@ -28,8 +53,8 @@ test("new discoveries use the previous visit, can be marked seen, and do not rem
 }) => {
   await page.addInitScript(
     (workspace) => {
-      if (!localStorage.getItem("signal-workspace-v1"))
-        localStorage.setItem("signal-workspace-v1", JSON.stringify(workspace));
+      if (!localStorage.getItem("siggo-workspace-v1"))
+        localStorage.setItem("siggo-workspace-v1", JSON.stringify(workspace));
     },
     { ...defaultWorkspace, lastVisitedAt: new Date(Date.now() - 86400000).toISOString() },
   );
@@ -135,7 +160,7 @@ test("add, note, reload, edit, remind, and delete a private manual competition",
     .click();
   await expect(page.getByTestId("competition-card")).toHaveCount(0);
   const workspace = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("signal-workspace-v1")!),
+    JSON.parse(localStorage.getItem("siggo-workspace-v1")!),
   );
   expect(workspace.manualCompetitions).toEqual([]);
   expect(workspace.notes).toEqual({});
@@ -166,7 +191,7 @@ test("existing links are saved instead of duplicated, and unsaved notes require 
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   const workspace = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("signal-workspace-v1")!),
+    JSON.parse(localStorage.getItem("siggo-workspace-v1")!),
   );
   expect(workspace.manualCompetitions).toEqual([]);
   expect(workspace.saved).toEqual(["drivendata:finance"]);
@@ -197,7 +222,7 @@ test("personal listings remain manageable after they end", async ({ page }) => {
     lastSeenAt: new Date().toISOString(),
   };
   await page.addInitScript(
-    (workspace) => localStorage.setItem("signal-workspace-v1", JSON.stringify(workspace)),
+    (workspace) => localStorage.setItem("siggo-workspace-v1", JSON.stringify(workspace)),
     { ...defaultWorkspace, manualCompetitions: [manual] },
   );
   await page.goto("/");

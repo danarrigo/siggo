@@ -76,7 +76,7 @@ test("broken images show a compact placeholder without hiding competition action
 }) => {
   await page.route("**/_next/image?**", async (route) => {
     const source = new URL(route.request().url()).searchParams.get("url");
-    if (source?.endsWith("signal-e2e-cover.png")) return route.abort();
+    if (source?.endsWith("siggo-e2e-cover.png")) return route.abort();
     return route.fallback();
   });
   await page.goto("/");

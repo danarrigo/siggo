@@ -1,4 +1,4 @@
-# Signal
+# Siggo
 
 [Live app](https://siggo.vercel.app) - private GitHub sign-in required.
 
@@ -74,7 +74,7 @@ Only public event metadata is collected, with source attribution and official li
 
 ## Source control and automatic deployments
 
-The private repository is [danarrigo/signal](https://github.com/danarrigo/signal). Pushes to `main` run GitHub checks and automatically deploy through the connected Vercel project; pull requests get checks and Vercel previews. CI and deployment run independently.
+The private repository is [danarrigo/siggo](https://github.com/danarrigo/siggo). Pushes to `main` run GitHub checks and automatically deploy through the connected Vercel project; pull requests get checks and Vercel previews. CI and deployment run independently.
 
 Production credentials stay in Vercel and git-ignored local environment files, not GitHub Actions. Preview deployments do not receive the production database or private OAuth credentials.
 

@@ -1,6 +1,13 @@
 import { type Workspace, workspaceSchema } from "./model";
 
-export const workspaceStorageKey = "signal-workspace-v1";
+export const workspaceStorageKey = "siggo-workspace-v1";
+// Read the former key during upgrades; leave the old copy intact as a recovery path.
+const legacyWorkspaceStorageKey = "signal-workspace-v1";
+function storedWorkspace() {
+  return (
+    localStorage.getItem(workspaceStorageKey) ?? localStorage.getItem(legacyWorkspaceStorageKey)
+  );
+}
 type Snapshot = {
   workspace: Workspace;
   since: string;
@@ -105,7 +112,7 @@ export function createWorkspaceStore(initial: Workspace, mode: "local" | "cloud"
       return;
     }
     try {
-      const stored = localStorage.getItem(workspaceStorageKey);
+      const stored = storedWorkspace();
       const workspace = stored ? workspaceSchema.parse(JSON.parse(stored)) : snapshot.workspace;
       publish({ workspace, since: workspace.lastVisitedAt ?? visitTime, ready: true });
       writeLocal({ ...workspace, lastVisitedAt: visitTime }, true);
@@ -117,9 +124,14 @@ export function createWorkspaceStore(initial: Workspace, mode: "local" | "cloud"
     }
   }
   function onStorage(event: StorageEvent) {
-    if (event.key !== workspaceStorageKey && event.key !== null) return;
+    if (
+      event.key !== workspaceStorageKey &&
+      event.key !== legacyWorkspaceStorageKey &&
+      event.key !== null
+    )
+      return;
     try {
-      const stored = localStorage.getItem(workspaceStorageKey);
+      const stored = storedWorkspace();
       if (stored) publish({ workspace: workspaceSchema.parse(JSON.parse(stored)) });
     } catch {
       publish({ status: "Could not read changes from another tab." });

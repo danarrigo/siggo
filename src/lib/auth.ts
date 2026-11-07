@@ -31,7 +31,7 @@ export function allowedEmail(email: string) {
 }
 function createAuth() {
   return betterAuth({
-    appName: "Signal",
+    appName: "Siggo",
     baseURL: process.env.BETTER_AUTH_URL!,
     secret: process.env.BETTER_AUTH_SECRET!,
     database: drizzleAdapter(getDb(), { provider: "pg", schema }),

@@ -4,7 +4,7 @@ import "@fontsource-variable/geist-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Signal | Competition index",
+  title: "Siggo | Competition index",
   description: "Active ML and data science competitions, hackathons, and research challenges.",
   robots: { index: false, follow: false },
 };

@@ -31,7 +31,7 @@ export function rememberPublicCatalog(catalog: Catalog) {
 }
 
 const headers = {
-  "User-Agent": "SignalCompetitionRadar/0.1 (personal discovery; public event metadata only)",
+  "User-Agent": "SiggoCompetitionIndex/0.1 (personal discovery; public event metadata only)",
   Accept: "application/json, text/html",
 };
 export const sourceDefinitions: {

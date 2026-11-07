@@ -36,7 +36,7 @@ const competitions = [
     id: "evalai:arena",
     firstSeenAt: after(-0.25),
     title: "Neural Arena: Multi-agent Simulation",
-    image: { url: "https://media.eval.ai/media/logos/signal-e2e-cover.png", kind: "cover" },
+    image: { url: "https://media.eval.ai/media/logos/siggo-e2e-cover.png", kind: "cover" },
     tags: ["reinforcement learning", "games", "simulation"],
     description:
       "Train agents to cooperate, compete, and find their footing in procedurally generated worlds. Explore the next frontier of multi-agent learning.",

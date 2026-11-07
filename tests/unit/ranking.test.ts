@@ -36,7 +36,7 @@ const game: Competition = {
 describe("honest, explainable recommendations", () => {
   it("matches interests and explains online fit without claiming eligibility", () => {
     const rank = rankCompetition(game, defaultWorkspace, [game], now);
-    expect(rank.label).toBe("Strong signal");
+    expect(rank.label).toBe("Strong match");
     expect(rank.reasons).toContain("Matches games & simulation");
     expect(rank.cautions).toContain("Entry fee unverified");
     expect(rank.reasons.join(" ")).not.toMatch(/eligible|free entry|hardware/i);
@@ -61,7 +61,7 @@ describe("honest, explainable recommendations", () => {
       now,
     );
     expect(closed.cautions).toContain("Registration closed");
-    expect(closed.label).not.toBe("Strong signal");
+    expect(closed.label).not.toBe("Strong match");
     const dismissed = rankCompetition(
       game,
       { ...defaultWorkspace, dismissed: [game.id] },

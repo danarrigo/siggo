@@ -36,7 +36,7 @@ export default async function Home() {
       <div className="gate-page">
         <section className="gate-card">
           <Brand />
-          <h1>Sign in to Signal</h1>
+          <h1>Sign in to Siggo</h1>
           <p>Use your allowed GitHub account to access saved competitions and preferences.</p>
           <SignIn />
         </section>
@@ -59,5 +59,5 @@ export default async function Home() {
   );
 }
 function Brand() {
-  return <div className="brand">signal</div>;
+  return <div className="brand">siggo</div>;
 }

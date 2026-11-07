@@ -7,8 +7,7 @@ export const test = base.extend({
     // Fulfill the image optimizer request in-browser: E2E never contacts asset hosts.
     await page.route("**/_next/image?**", async (route) => {
       const source = new URL(route.request().url()).searchParams.get("url");
-      if (!source?.startsWith("https://media.eval.ai/media/logos/signal-e2e-"))
-        return route.abort();
+      if (!source?.startsWith("https://media.eval.ai/media/logos/siggo-e2e-")) return route.abort();
       await route.fulfill({
         contentType: "image/svg+xml",
         body: await readFile("tests/fixtures/cover.svg"),

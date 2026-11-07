@@ -221,8 +221,8 @@ export function Dashboard({
       </a>
       <header className="masthead">
         <div className="masthead-inner">
-          <Link href="/" className="brand" aria-label="Signal home">
-            signal
+          <Link href="/" className="brand" aria-label="Siggo home">
+            siggo
             <span className="brand-rule" aria-hidden="true" />
           </Link>
           <span className="masthead-description">Competition index</span>
