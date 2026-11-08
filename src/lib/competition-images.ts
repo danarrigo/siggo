@@ -4,6 +4,13 @@ export const kagglePreviewPrefix = "https://www.kaggle.com/open-graph/images/Com
 export const competitionImagePatterns = [
   {
     protocol: "https",
+    hostname: "zindi-public-release.s3.eu-west-2.amazonaws.com",
+    port: "",
+    pathname: "/uploads/competition/image/**",
+    search: "",
+  },
+  {
+    protocol: "https",
     hostname: "media.eval.ai",
     port: "",
     pathname: "/media/logos/**",

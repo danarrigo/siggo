@@ -68,7 +68,7 @@ Zindi requires rendered pages rather than its initial HTML. An anonymous, identi
 - Prioritize missing-date and older timeline observations after an interrupted run.
 - Keep licensed-calendar and previously known details as explicitly limited recovery data.
 
-The reader imports public title, link, reward, and date facts. Descriptions are generic; rules, artwork, datasets, and participant identities are not copied. Known account-only participation requests are blocked before sending, not retried or authenticated.
+The reader imports public title, link, reward, and date facts, plus the thumbnail URL explicitly published on each challenge card. Only the official image bucket's competition-image path is allowlisted. Descriptions are generic; rules, datasets, and participant identities are not copied. Image references do not grant artwork reuse rights; images remain subject to their source terms. Known account-only participation requests are blocked before sending, not retried or authenticated.
 
 The browser uses temporary profiles and a small environment allowlist, not application secrets. Writes, unapproved hosts, redirects, analytics, and media are blocked. Profiles are removed after each run. Vercel uses bundled serverless Chromium, not a separate browser provider.
 
@@ -114,6 +114,7 @@ Manual listings are private workspace data. Their URLs are never automatically s
 
 Images come from source-provided listing/API metadata. Missing, broken, or rejected images use neutral placeholders, not generated artwork.
 
+- Zindi thumbnails come from each public card's CSS `background-image`, not guessed URLs or unrelated partner logos. The collector still blocks image downloads; the UI loads allowed assets through the image optimizer.
 - Remote optimization uses a strict HTTPS asset-host/path allowlist, no redirects, and a 5 MB limit. Unapproved, private, signed, and remote SVG image URLs are rejected.
 - Kaggle's numeric competition ID can provide its official Open Graph preview URL. These previews load directly with no referrer because Kaggle redirects to temporary signed assets; signed destinations and API tokens are not stored in the catalog.
 - Codabench signing parameters are removed only for its verified public logo bucket.

@@ -35,6 +35,9 @@ describe("competition imagery", () => {
       "https://media.eval.ai/media/logos/a.png?token=secret",
       "https://media.eval.ai/media/logos/a.svg",
       "https://storage.googleapis.com/unrelated-bucket/a.png",
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/avatars/a.png",
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com.evil.example/uploads/competition/image/1/a.png",
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1/a.png?X-Amz-Signature=secret",
     ]) {
       expect(competitionImageUrl(value)).toBeNull();
     }

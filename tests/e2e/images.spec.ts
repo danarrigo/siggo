@@ -40,6 +40,32 @@ test("shows source images and neutral placeholders without generated filler", as
   await page.screenshot({ path: info.outputPath("competition-covers.png"), fullPage: true });
 });
 
+test("Zindi published thumbnails load in rows and details instead of neutral placeholders", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Filter by source" }).selectOption("zindi");
+  const card = page.getByTestId("competition-card");
+  const image = card.getByRole("img", { name: "Organizer artwork for Forecast River Flood Risk" });
+  await expect(image).toBeVisible();
+  await expect(card.getByTestId("competition-cover")).toHaveAttribute("data-visual-kind", "cover");
+  expect(
+    new URL((await image.getAttribute("src")) ?? "", "http://127.0.0.1:3100").searchParams.get(
+      "url",
+    ),
+  ).toBe(
+    "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/siggo-e2e-flood.png",
+  );
+  await expect
+    .poll(() => image.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0))
+    .toBe(true);
+  await page.screenshot({ path: info.outputPath("zindi-thumbnail.png") });
+  await card
+    .getByRole("button", { name: "Preview Forecast River Flood Risk", exact: true })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("img")).toBeVisible();
+});
+
 test("Kaggle previews load directly without using the image proxy", async ({ page }) => {
   const preview = "https://www.kaggle.com/open-graph/images/Competitions/1234";
   let requestedPreview = false;
@@ -102,7 +128,12 @@ test("broken images show a compact placeholder without hiding competition action
 test("the image optimizer rejects private network and unapproved image hosts", async ({
   request,
 }) => {
-  for (const url of ["http://127.0.0.1:3100/api/sync", "https://evil.example/cover.png"]) {
+  for (const url of [
+    "http://127.0.0.1:3100/api/sync",
+    "https://evil.example/cover.png",
+    "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/avatars/private.png",
+    "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/flood.png?token=secret",
+  ]) {
     const response = await request.get(`/_next/image?url=${encodeURIComponent(url)}&w=640&q=75`);
     expect(response.status()).toBe(400);
   }

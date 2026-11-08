@@ -106,6 +106,10 @@ const competitions = [
     id: "zindi:flood",
     source: "zindi",
     title: "Forecast River Flood Risk",
+    image: {
+      url: "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/siggo-e2e-flood.png",
+      kind: "cover",
+    },
     category: "ML / Data science",
     tags: ["climate", "forecasting"],
     url: "https://zindi.world/competitions/river-flood-risk",

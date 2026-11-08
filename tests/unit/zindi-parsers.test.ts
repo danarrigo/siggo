@@ -25,6 +25,44 @@ describe("public Zindi page metadata", () => {
       registrationOpen: null,
     });
   });
+  it("keeps published competition CSS thumbnails, not unrelated partner artwork", () => {
+    const url =
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/flood.png";
+    for (const css of [`url(${url})`, `url('${url}')`, `url( &quot;${url}&quot; )`]) {
+      const entry = card("flood", "Flood challenge").replace(
+        '<div class="Competition__title',
+        `<div class="Competition__image___hash" style="height:50px;background-image: ${css};"></div><div class="Competition__title`,
+      );
+      expect(
+        parseZindiDirectory(`<h2>Open Challenges: 1</h2>${entry}`, stamp).items[0].image,
+      ).toEqual({ url, kind: "cover" });
+    }
+    const partnerOnly = card("flood", "Flood challenge").replace(
+      "<button>",
+      `<img class="partner" src="${url}"><button>`,
+    );
+    expect(
+      parseZindiDirectory(`<h2>Open Challenges: 1</h2>${partnerOnly}`, stamp).items[0].image,
+    ).toBeNull();
+  });
+  it("ignores unsafe or unsupported optional artwork without losing a valid challenge", () => {
+    for (const url of [
+      "https://evil.example/cover.png",
+      "https://169.254.169.254/cover.png",
+      "http://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1/flood.png",
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1/flood.svg",
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1/flood.png?token=secret",
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/avatars/flood.png",
+    ]) {
+      const entry = card("flood", "Flood challenge").replace(
+        '<div class="Competition__title',
+        `<div class="Competition__image___hash" style="background-image:url('${url}')"></div><div class="Competition__title`,
+      );
+      const result = parseZindiDirectory(`<h2>Open Challenges: 1</h2>${entry}`, stamp);
+      expect(result.complete).toBe(true);
+      expect(result.items[0].image).toBeNull();
+    }
+  });
   it("distinguishes a genuinely empty directory from a missing/changed page structure", () => {
     expect(
       parseZindiDirectory("<h2>Open Challenges: 0</h2><h2>Past Challenges: 1</h2>", stamp).items,

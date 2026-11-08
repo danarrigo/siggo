@@ -696,6 +696,11 @@ export function parseZindiDirectory(html: string, checkedAt: string) {
     const slug = destination.pathname.match(/^\/competitions\/([a-z0-9-]+)\/?$/i)?.[1];
     if (!slug || destination.origin !== "https://zindi.world")
       throw new Error("Unexpected Zindi competition URL");
+    const artwork = node
+      .find("[class*='Competition__image']")
+      .first()
+      .attr("style")
+      ?.match(/(?:^|;)\s*background-image\s*:\s*url\(\s*(?:"([^"]+)"|'([^']+)'|([^'"\s)]+))\s*\)/i);
     const item = competitionSchema.parse({
       ...base("zindi", slug, checkedAt),
       title: link.text().replace(/\s+/g, " ").trim().slice(0, 500),
@@ -703,7 +708,7 @@ export function parseZindiDirectory(html: string, checkedAt: string) {
       description:
         "Public Zindi challenge. Check the official page for task details and participation rules.",
       organizer: "Zindi competition organizers",
-      image: null,
+      image: sourceImage(artwork?.[1] ?? artwork?.[2] ?? artwork?.[3], "https://zindi.world"),
       reward:
         node.find("[class*='Competition__reward']").first().text().replace(/\s+/g, " ").trim() ||
         null,

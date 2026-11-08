@@ -8,7 +8,7 @@ test.skip(({ isMobile }) => Boolean(isMobile), "Server-side source checks run on
 test.setTimeout(60_000);
 const stamp = "2031-01-01T00:00:00.000Z";
 const card = (slug: string) =>
-  `<div class="Competition__container___fixture"><div class="Competition__title___fixture"><a href="/competitions/${slug}">${slug} AI challenge</a></div><div class="Competition__reward___fixture">$5 000 USD</div></div>`;
+  `<div class="Competition__container___fixture"><div class="Competition__image___fixture" style="width:80px;height:50px;background-image:url('https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/siggo-e2e-flood.png')"></div><div class="Competition__title___fixture"><a href="/competitions/${slug}">${slug} AI challenge</a></div><div class="Competition__reward___fixture">$5 000 USD</div></div>`;
 const directory = `<h2>Open Challenges: 2</h2>${card("one")}${card("two")}<h2>Past Challenges: 500</h2>${card("past")}<button>Load more</button>`;
 const timeline = `<div class="Timeline__container___fixture"><div class="Timeline__child___fixture"><div class="Timeline__title___fixture">Start</div><div class="Timeline__date___fixture">05 Nov 35</div></div><div class="Timeline__child___fixture Timeline__close___fixture"><div class="Timeline__title___fixture">Close<span class="Timeline__info___fixture" onmouseenter="console.log('public-timeline-hover')">i</span></div><div class="Timeline__date___fixture">01 Dec 35</div></div></div><div class="__react_component_tooltip">Submission close = 30 November 2035 at 23:59<br>Submission selection close = 01 December 2035 at 00:29</div>`;
 type PublicPage = { body: string; status?: number; retryAfter?: string };
@@ -97,6 +97,10 @@ test("serverless browser reads paginated public metadata without past or account
     expect(result.collectionMode).toBe("public-directory");
     expect(result.items.map((item) => item.id)).toEqual(["zindi:one", "zindi:two"]);
     expect(result.items[0]).toMatchObject({
+      image: {
+        url: "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/siggo-e2e-flood.png",
+        kind: "cover",
+      },
       submissionEndsAt: "2035-11-30",
       challengeEndsAt: null,
       registrationEndsAt: null,
@@ -105,6 +109,9 @@ test("serverless browser reads paginated public metadata without past or account
     expect(paths).toEqual(["/competitions", "/competitions/one", "/competitions/two"]);
     expect(failed).toContain("https://api.zindi.world/v1/participations");
     expect(failed).toContain("https://169.254.169.254/");
+    expect(failed).toContain(
+      "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/siggo-e2e-flood.png",
+    );
     expect(hovered).toHaveLength(2);
   } finally {
     if (vercel === undefined) delete process.env.VERCEL;
