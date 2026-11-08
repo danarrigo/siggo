@@ -504,6 +504,12 @@
 .timeline-column.closing-soon > strong {
   color: #9b3d2b;
 }
+.reward-column > strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .reward-column > strong.not-published {
   color: #6b675e;
   font-weight: 400;

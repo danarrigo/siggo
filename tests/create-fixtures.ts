@@ -118,6 +118,10 @@ const competitions = [
     id: "codabench:reasoning",
     source: "codabench",
     title: "Language Reasoning Benchmark",
+    reward:
+      "All participants receive recognition and an invitation to share their research with the community. "
+        .repeat(8)
+        .trim(),
     tags: ["language", "reasoning"],
     url: "https://www.codabench.org/competitions/1234/",
     description: "A clearly fictional E2E phase-verified research challenge.",
@@ -142,11 +146,21 @@ const catalog: Catalog = {
           : ["zindi", "codabench"].includes(source.id)
             ? "partial"
             : "healthy",
+    note:
+      source.id === "codabench"
+        ? `${source.note} 81 public entries discovered (directory complete); 1 phase check this refresh; 80 known IDs not yet verified. Checks resume across refreshes.`
+        : source.note,
     count: competitions.filter((item) => item.source === source.id).length,
     checkedAt: ["kaggle", "devpost"].includes(source.id) ? null : after(0),
     lastSuccessAt: ["kaggle", "devpost"].includes(source.id) ? null : after(0),
   })),
   updatedAt: after(0),
+  // Fictional server-only progress metadata must not be serialized into the dashboard.
+  codabench: {
+    checks: { "1234": { attemptedAt: after(0), verifiedAt: after(0), active: true } },
+    directoryCount: 81,
+    directoryCheckedAt: after(0),
+  },
 };
 await mkdir("tests/fixtures", { recursive: true });
 await writeFile("tests/fixtures/catalog.json", JSON.stringify(catalog, null, 2));

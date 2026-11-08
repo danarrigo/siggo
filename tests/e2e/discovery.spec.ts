@@ -142,6 +142,10 @@ test("sources expose provenance, date precision, and curated coverage without re
   await expect(dialog.getByRole("link", { name: "CodaLab", exact: true })).toHaveCount(0);
   await expect(dialog.getByText("Retired", { exact: true })).toHaveCount(0);
   await expect(dialog.getByText("Curated feed", { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText(/81 public entries discovered \(directory complete\)/),
+  ).toBeVisible();
+  expect(await page.content()).not.toContain("attemptedAt");
   for (const name of ["Zindi", "Codabench", "Devpost"]) {
     const row = dialog
       .locator(".source-row")
@@ -150,6 +154,24 @@ test("sources expose provenance, date precision, and curated coverage without re
       row.getByRole("link", { name: "MLContests open calendar (GPL-3.0)" }),
     ).toHaveAttribute("href", "https://github.com/mlcontests/mlcontests.github.io");
   }
+});
+
+test("long source-provided rewards stay compact in rows and remain readable in details", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Filter by source" }).selectOption("codabench");
+  const reward = page.getByTestId("competition-card").locator(".reward-column > strong");
+  const value = await reward.innerText();
+  const bounds = await reward.evaluate((element) => ({
+    height: element.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(element).lineHeight),
+  }));
+  expect(bounds.height).toBeLessThanOrEqual(bounds.lineHeight * 3 + 1);
+  await page.getByRole("button", { name: "Language Reasoning Benchmark", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").locator(".detail-facts").getByText(value, { exact: true }),
+  ).toBeVisible();
 });
 
 test("private mutation and cron endpoints cannot be used anonymously", async ({ request }) => {

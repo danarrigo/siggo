@@ -82,7 +82,22 @@ export type SourceStatus = {
   lastSuccessAt: string | null;
   note: string;
 };
-export type Catalog = { competitions: Competition[]; sources: SourceStatus[]; updatedAt: string };
+export type CodabenchSyncState = {
+  checks: Record<
+    string,
+    { attemptedAt: string | null; verifiedAt: string | null; active: boolean | null }
+  >;
+  directoryCount?: number;
+  directoryCheckedAt?: string;
+  retryAt?: string;
+};
+export type Catalog = {
+  competitions: Competition[];
+  sources: SourceStatus[];
+  updatedAt: string;
+  // Public-source crawl state is persisted in the existing snapshot, never sent to the browser.
+  codabench?: CodabenchSyncState;
+};
 
 export function catalogForSources(catalog: Catalog, enabledIds: readonly SourceId[]): Catalog {
   const enabled = new Set(enabledIds);

@@ -251,7 +251,7 @@ export function Dashboard({
   }
   async function refresh() {
     setSyncing(true);
-    setSyncMessage("Checking sources…");
+    setSyncMessage("Checking sources… Codabench can take up to four minutes.");
     try {
       await store.whenIdle();
       if (store.getSnapshot().unsynced)

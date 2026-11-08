@@ -48,7 +48,11 @@ export default async function Home() {
   const now = Date.now();
   return (
     <Dashboard
-      catalog={catalog}
+      catalog={{
+        competitions: catalog.competitions,
+        sources: catalog.sources,
+        updatedAt: catalog.updatedAt,
+      }}
       initialWorkspace={workspace}
       mode={preview ? "local" : "cloud"}
       now={now}

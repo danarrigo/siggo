@@ -10,8 +10,6 @@ import {
 } from "../model";
 import {
   parseAIcrowd,
-  parseCodabenchCompetition,
-  parseCodabenchPage,
   parseDrivenData,
   parseEvalAI,
   parseKaggle,
@@ -19,6 +17,8 @@ import {
   parseOpenCalendar,
   parseZindiCalendar,
 } from "./parsers";
+import { collectCodabench } from "./codabench";
+import { request, sourceFailure } from "./request";
 
 // Seeded by the public cache reader so local previews can retain data through a provider outage.
 let lastPublicCatalog: Catalog | undefined;
@@ -30,10 +30,6 @@ export function rememberPublicCatalog(catalog: Catalog) {
     lastPublicCatalog = catalog;
 }
 
-const headers = {
-  "User-Agent": "SiggoCompetitionIndex/0.1 (personal discovery; public event metadata only)",
-  Accept: "application/json, text/html",
-};
 export const sourceDefinitions: {
   id: Exclude<SourceId, "codalab">;
   name: string;
@@ -85,7 +81,7 @@ export const sourceDefinitions: {
     id: "codabench",
     name: "Codabench",
     url: "https://www.codabench.org/",
-    note: "Official public API plus MLContests' open calendar. Checks up to 40 phase candidates per sync, prioritizing current calendar listings, at no more than one detail request per second. Larger directories, curated fallbacks, and incomplete checks are marked Limited.",
+    note: "Official public API plus MLContests' open calendar. Follows directory pages and resumes phase checks across refreshes, with requests spaced at least one second apart. Incomplete or failed checks are marked Limited.",
     attribution: {
       name: "MLContests open calendar (GPL-3.0)",
       url: "https://github.com/mlcontests/mlcontests.github.io",
@@ -102,20 +98,6 @@ export const sourceDefinitions: {
     },
   },
 ];
-
-async function request(url: string, authorization: string | undefined, budget: AbortSignal) {
-  const response = await fetch(url, {
-    headers: { ...headers, ...(authorization ? { Authorization: authorization } : {}) },
-    signal: AbortSignal.any([budget, AbortSignal.timeout(18_000)]),
-    redirect: "error",
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    await response.body?.cancel();
-    throw new Error(`Source returned HTTP ${response.status}`);
-  }
-  return response;
-}
 
 async function evalAI(checkedAt: string, budget: AbortSignal) {
   const items: Competition[] = [];
@@ -201,154 +183,13 @@ async function aicrowd(checkedAt: string, budget: AbortSignal) {
   }
 }
 
-function validateCodabenchNext(next: string | null, page: number) {
-  if (!next) return;
-  const target = new URL(next);
-  if (
-    ![
-      "https://www.codabench.org",
-      "https://codabench.org",
-      "https://codabench-prod.lisn.upsaclay.fr",
-    ].includes(target.origin) ||
-    target.username ||
-    target.password ||
-    target.pathname !== "/api/competitions/public/" ||
-    target.searchParams.get("page") !== String(page + 1)
-  )
-    throw new Error("Unexpected Codabench pagination URL");
-}
-
-function sourceFailure(error: unknown) {
-  return error instanceof Error && /^Source returned HTTP \d+$/.test(error.message)
-    ? error.message
-    : "Could not validate or fetch this source";
-}
-
-async function codabench(
-  checkedAt: string,
-  budget: AbortSignal,
-  calendarData: () => Promise<unknown>,
+export async function collectCatalog(
   previous?: Catalog,
-) {
-  let curated: Competition[] = [];
-  let curatedCandidates: number[] = [];
-  let calendarFailed = false;
-  try {
-    const parsed = parseOpenCalendar(await calendarData(), checkedAt, "codabench");
-    curated = parsed.items;
-    curatedCandidates = parsed.candidates;
-  } catch {
-    calendarFailed = true;
-  }
-  const publicIds = new Set<number>();
-  const verified = new Set<string>();
-  let apiFailure: string | null = null;
-  let failed = 0;
-  let total: number | null = null;
-  let next: string | null = null;
-  try {
-    for (let page = 1; page <= 20 && publicIds.size < 40; page++) {
-      const endpoint = `https://www.codabench.org/api/competitions/public/?page=${page}&page_size=40&ordering=recent`;
-      const batch = parseCodabenchPage(await (await request(endpoint, undefined, budget)).json());
-      validateCodabenchNext(batch.next, page);
-      total = batch.count;
-      next = batch.next;
-      for (const row of batch.results) publicIds.add(row.id);
-      if (!batch.results.length && total && !publicIds.size)
-        throw new Error("Unexpected empty Codabench directory");
-      if (!next || !batch.results.length) break;
-    }
-  } catch (error) {
-    apiFailure = sourceFailure(error);
-  }
-  if (apiFailure && calendarFailed) throw new Error(apiFailure);
-
-  const items = new Map(curated.map((item) => [item.id, item]));
-  const candidates = [...new Set([...curatedCandidates, ...publicIds])].slice(0, 40);
-  let attempted = 0;
-  let consecutiveFailures = 0;
-  if (!apiFailure)
-    for (const id of candidates) {
-      if (budget.aborted) {
-        apiFailure = "Request budget reached";
-        break;
-      }
-      try {
-        if (attempted) await delay(1000, undefined, { signal: budget });
-        attempted++;
-        const data = await (
-          await request(`https://www.codabench.org/api/competitions/${id}/`, undefined, budget)
-        ).json();
-        const item = parseCodabenchCompetition(data, checkedAt);
-        if (item && item.id !== `codabench:${id}`)
-          throw new Error("Unexpected Codabench identifier");
-        const key = `codabench:${id}`;
-        verified.add(key);
-        consecutiveFailures = 0;
-        if (!item) {
-          items.delete(key);
-          continue;
-        }
-        const calendar = items.get(key);
-        items.set(
-          key,
-          calendar
-            ? {
-                ...item,
-                tags: [...new Set([...item.tags, ...calendar.tags])].slice(0, 40),
-                reward: item.reward || calendar.reward,
-                submissionEndsAt: calendar.submissionEndsAt,
-                registrationEndsAt: calendar.registrationEndsAt,
-              }
-            : item,
-        );
-      } catch (error) {
-        const reason = sourceFailure(error);
-        if (reason === "Source returned HTTP 404") {
-          verified.add(`codabench:${id}`);
-          items.delete(`codabench:${id}`);
-          continue;
-        }
-        failed++;
-        consecutiveFailures++;
-        // Stop on access/rate limits and provider outages instead of hammering the remaining entries.
-        if (
-          /^Source returned HTTP (403|429|5\d\d)$/.test(reason) ||
-          consecutiveFailures >= 3 ||
-          budget.aborted
-        ) {
-          apiFailure = reason;
-          break;
-        }
-      }
-    }
-  if (!verified.size && calendarFailed && (failed || apiFailure))
-    throw new Error(apiFailure || "Could not verify Codabench phase dates");
-  const partial = Boolean(
-    apiFailure ||
-    failed ||
-    next ||
-    total === null ||
-    total > publicIds.size ||
-    [...publicIds].some((id) => !verified.has(`codabench:${id}`)) ||
-    curated.some((item) => !verified.has(item.id)),
-  );
-  if (partial)
-    for (const item of (previous ?? lastPublicCatalog)?.competitions ?? []) {
-      if (item.source !== "codabench" || verified.has(item.id) || !isActive(item)) continue;
-      const current = items.get(item.id);
-      items.set(item.id, current ? { ...current, image: current.image ?? item.image } : item);
-    }
-  return {
-    items: [...items.values()],
-    partial,
-    note: `${verified.size} official entries checked; ${curated.length} active-dated calendar candidates. ${apiFailure ? `Official API: ${apiFailure}. ` : ""}${partial ? "Coverage is incomplete; still-active earlier discoveries are retained when a snapshot is available." : "All public entries checked."}`,
-  };
-}
-
-export async function collectCatalog(previous?: Catalog): Promise<Catalog> {
+  codabenchBudget = AbortSignal.timeout(240_000),
+): Promise<Catalog> {
   const checkedAt = new Date().toISOString();
   const budget = AbortSignal.timeout(90_000);
+  let codabenchState = (previous ?? lastPublicCatalog)?.codabench;
   let calendar: Promise<unknown> | undefined;
   const calendarData = () =>
     (calendar ??= request(
@@ -406,11 +247,32 @@ export async function collectCatalog(previous?: Catalog): Promise<Catalog> {
             break;
           }
           case "codabench": {
-            const result = await codabench(checkedAt, budget, calendarData, previous);
-            items = result.items;
-            if (result.partial) status.state = "partial";
-            status.note += ` ${result.note}`;
-            break;
+            const result = await collectCodabench(
+              checkedAt,
+              codabenchBudget,
+              calendarData,
+              () => previous ?? lastPublicCatalog,
+            );
+            const old = previous ?? lastPublicCatalog;
+            codabenchState = result.state;
+            items = deduplicate(result.items.filter((item) => isActive(item)));
+            return {
+              items,
+              status: {
+                ...status,
+                count: items.length,
+                state: !result.available
+                  ? ("unavailable" as const)
+                  : result.partial
+                    ? ("partial" as const)
+                    : ("healthy" as const),
+                lastSuccessAt: result.available
+                  ? checkedAt
+                  : (old?.sources.find((source) => source.id === "codabench")?.lastSuccessAt ??
+                    null),
+                note: `${status.note} ${result.note}`,
+              },
+            };
           }
           case "zindi":
             items = parseZindiCalendar(await calendarData(), checkedAt);
@@ -476,5 +338,6 @@ export async function collectCatalog(previous?: Catalog): Promise<Catalog> {
     ),
     sources: results.map((result) => result.status),
     updatedAt: checkedAt,
+    ...(codabenchState ? { codabench: codabenchState } : {}),
   };
 }
