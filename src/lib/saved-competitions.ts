@@ -14,6 +14,7 @@ export const deadlineLabels = {
   submissionEndsAt: "Submission deadline",
   challengeEndsAt: "Challenge end",
   eventEndsAt: "Event end",
+  listedDeadline: "Listed cutoff",
 } as const;
 const fields = Object.keys(deadlineLabels) as DeadlineChange["field"][];
 
@@ -67,12 +68,12 @@ export function reconcileSavedCompetitions(
     const item = { ...candidate, id };
     if (previous && item.source !== "manual") {
       for (const field of fields) {
-        const after = item[field];
+        const after = item[field] ?? null;
         // A partial response with an omitted date is not a confirmed deadline removal.
-        if (!after || sameDeadline(previous[field], after)) continue;
+        if (!after || sameDeadline(previous[field] ?? null, after)) continue;
         const key = `${id}:${field}`;
         const existing = changes.get(key);
-        const before = existing ? existing.before : previous[field];
+        const before = existing ? existing.before : (previous[field] ?? null);
         if (sameDeadline(before, after)) changes.delete(key);
         else
           changes.set(key, {
@@ -87,8 +88,12 @@ export function reconcileSavedCompetitions(
     }
     // Keep earlier known dates if a partial response omits them. These are explicitly
     // presented as saved details whenever the listing is no longer in the live catalog.
+    const listedDeadline = item.listedDeadline ?? previous?.listedDeadline;
+    const metadataSource = item.metadataSource ?? previous?.metadataSource;
     snapshots.set(id, {
       ...item,
+      ...(listedDeadline === undefined ? {} : { listedDeadline }),
+      ...(metadataSource ? { metadataSource } : {}),
       registrationEndsAt: item.registrationEndsAt ?? previous?.registrationEndsAt ?? null,
       submissionEndsAt: item.submissionEndsAt ?? previous?.submissionEndsAt ?? null,
       challengeEndsAt: item.challengeEndsAt ?? previous?.challengeEndsAt ?? null,

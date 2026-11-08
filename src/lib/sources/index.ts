@@ -8,16 +8,10 @@ import {
   isActive,
   preserveDiscoveryDates,
 } from "../model";
-import {
-  parseAIcrowd,
-  parseDrivenData,
-  parseEvalAI,
-  parseKaggle,
-  parseMLH,
-  parseOpenCalendar,
-} from "./parsers";
+import { parseAIcrowd, parseDrivenData, parseEvalAI, parseKaggle, parseMLH } from "./parsers";
 import { collectCodabench } from "./codabench";
 import { collectZindi } from "./zindi";
+import { collectDevpost } from "./devpost";
 import { request, sourceFailure } from "./request";
 
 // Seeded by the public cache reader so local previews can retain data through a provider outage.
@@ -91,7 +85,7 @@ export const sourceDefinitions: {
     id: "devpost",
     name: "Devpost",
     url: "https://devpost.com/hackathons",
-    note: "Only the openly licensed MLContests calendar is checked; Devpost's website is never scraped. This curated feed is not a complete hackathon directory. Browse manually when it has no current listings.",
+    note: "Third-party public titles, links and dates via TensorHack, plus the licensed MLContests calendar. Devpost itself is never requested. TensorHack permission is assumed, not confirmed. Listed cutoffs have unverified deadline types and do not prove an event ended. Coverage remains incomplete.",
     attribution: {
       name: "MLContests open calendar (GPL-3.0)",
       url: "https://github.com/mlcontests/mlcontests.github.io",
@@ -303,27 +297,35 @@ export async function collectCatalog(
               },
             };
           }
-          case "devpost":
-            try {
-              items = parseOpenCalendar(await calendarData(), checkedAt, "devpost").items;
-              status.state = items.length ? "partial" : "manual";
-              if (!items.length)
-                status.note +=
-                  " No current entries in the calendar; use the official directory manually.";
-            } catch (error) {
-              const old = previous ?? lastPublicCatalog;
-              if (old?.competitions.some((item) => item.source === "devpost" && isActive(item)))
-                throw error;
-              return {
-                items: [],
-                status: {
-                  ...status,
-                  state: "manual" as const,
-                  note: `${status.note} Calendar check failed; no direct site collection was attempted.`,
-                },
-              };
-            }
-            break;
+          case "devpost": {
+            const result = await collectDevpost(
+              checkedAt,
+              budget,
+              calendarData,
+              () => previous ?? lastPublicCatalog,
+            );
+            items = deduplicate(result.items.filter((item) => isActive(item)));
+            return {
+              items,
+              status: {
+                ...status,
+                count: items.length,
+                state: items.length
+                  ? result.available
+                    ? ("partial" as const)
+                    : ("unavailable" as const)
+                  : ("manual" as const),
+                collectionMode: result.collectionMode,
+                ...(result.retryAt ? { retryAt: result.retryAt } : {}),
+                lastSuccessAt: result.available
+                  ? checkedAt
+                  : ((previous ?? lastPublicCatalog)?.sources.find(
+                      (source) => source.id === "devpost",
+                    )?.lastSuccessAt ?? null),
+                note: `${status.note} ${result.note}`,
+              },
+            };
+          }
           case "mlh":
             status.url = `https://www.mlh.com/seasons/${year}/events`;
             status.note = `${year} MLH season only. Event end dates are not submission or registration deadlines.`;

@@ -5,8 +5,8 @@ test("shows source images and neutral placeholders without generated filler", as
 }, info) => {
   await page.goto("/");
   const cards = page.getByTestId("competition-card");
-  await expect(cards).toHaveCount(8);
-  await expect(cards.getByTestId("competition-cover")).toHaveCount(8);
+  await expect(cards).toHaveCount(9);
+  await expect(cards.getByTestId("competition-cover")).toHaveCount(9);
   const arena = cards.filter({ hasText: "Neural Arena: Multi-agent Simulation" });
   const image = arena.getByRole("img", {
     name: "Organizer artwork for Neural Arena: Multi-agent Simulation",

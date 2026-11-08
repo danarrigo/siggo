@@ -17,7 +17,7 @@ test("browse, search, filter, inspect accurate dates, and keep every active oppo
       .first()
       .evaluate((node) => node.getBoundingClientRect().top),
   ).toBeLessThan(480);
-  await expect(page.getByTestId("competition-card")).toHaveCount(8);
+  await expect(page.getByTestId("competition-card")).toHaveCount(9);
   await expect(page.getByText("An Archived Competition")).toHaveCount(0);
   await expect(
     page
@@ -26,7 +26,7 @@ test("browse, search, filter, inspect accurate dates, and keep every active oppo
       .getByText("Registration closed", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "All competitions", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(8);
+  await expect(page.getByTestId("competition-card")).toHaveCount(9);
   await page.getByRole("textbox", { name: "Search competitions" }).fill("finance");
   await expect(page.getByTestId("competition-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Forecast the Financial Frontier", exact: true }).click();
@@ -41,11 +41,11 @@ test("browse, search, filter, inspect accurate dates, and keep every active oppo
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Clear search" }).click();
   await page.getByRole("button", { name: "Hackathons", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(2);
+  await expect(page.getByTestId("competition-card")).toHaveCount(3);
   await page.getByRole("combobox", { name: "Filter by source" }).selectOption("evalai");
   await expect(page.getByRole("heading", { name: "No matching competitions" })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(8);
+  await expect(page.getByTestId("competition-card")).toHaveCount(9);
   expect(errors).toEqual([]);
 });
 
@@ -73,7 +73,7 @@ test("save, dismiss and edit preferences, preserving them across reloads", async
     }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "All competitions", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(8);
+  await expect(page.getByTestId("competition-card")).toHaveCount(9);
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Finance", exact: true }).click();
@@ -111,7 +111,7 @@ test("source gaps are transparent and the layout is accessible without horizonta
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Source coverage" })).toBeVisible();
   await expect(dialog.getByText("Needs key", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("Browse manually", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/TensorHack permission is assumed, not confirmed/)).toBeVisible();
   const modal = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
@@ -136,7 +136,7 @@ test("sources expose provenance, date precision, and curated coverage without re
   await expect(source.getByRole("option", { name: "CodaLab", exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "View source coverage", exact: true }),
-  ).toContainText("6/8");
+  ).toContainText("7/8");
   await page.getByRole("button", { name: "View source coverage", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("link", { name: "CodaLab", exact: true })).toHaveCount(0);

@@ -27,6 +27,7 @@ const deadlineFields = [
   ["submissionEndsAt", "Submissions close"],
   ["challengeEndsAt", "Challenge ends"],
   ["eventEndsAt", "Event ends"],
+  ["listedDeadline", "Listed cutoff"],
 ] as const;
 
 export function deadlineReminders(items: Competition[], saved: string[], now: number) {

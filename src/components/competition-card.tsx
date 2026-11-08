@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark } from "lucide-react";
-import { type Competition, deadlineTime, endDate, isActive } from "@/lib/model";
+import { type Competition, deadlineTime, displayDeadline, endDate, isActive } from "@/lib/model";
 import { formatDate, relativeDeadline, type rankCompetition } from "@/lib/ranking";
 import { CompetitionCover } from "./competition-cover";
 
@@ -50,7 +50,8 @@ export function CompetitionCard({
   onOpen: () => void;
 }) {
   const archived = !isActive(item, now);
-  const end = endDate(item);
+  const end = displayDeadline(item);
+  const listedOnly = !endDate(item) && Boolean(item.listedDeadline);
   const relative = relativeDeadline(end, now);
   const date =
     relative === "Long-running" ? "Long-running" : end ? formatDate(end) : "Not published";
@@ -60,16 +61,22 @@ export function CompetitionCard({
       ? "Challenge"
       : item.eventEndsAt
         ? "Event"
-        : "End date";
-  const dateNote = relative.startsWith("Ends in ")
-    ? `${dateKind} · ${relative.slice(8)} left`
-    : relative === "Time/zone unlisted"
-      ? `${dateKind} · time unlisted`
-      : dateKind;
+        : listedOnly
+          ? "Listed cutoff"
+          : "End date";
+  const dateNote =
+    listedOnly && end && deadlineTime(end) <= now
+      ? "Listed cutoff passed · end unverified"
+      : relative.startsWith("Ends in ")
+        ? `${dateKind} · ${relative.slice(8)} left`
+        : relative === "Time/zone unlisted"
+          ? `${dateKind} · time unlisted`
+          : dateKind;
   const closed =
     item.registrationOpen === false ||
     Boolean(item.registrationEndsAt && deadlineTime(item.registrationEndsAt) <= now);
-  const soon = !archived && Boolean(end && deadlineTime(end) - now < 7 * 86400000);
+  const soon =
+    !archived && Boolean(end && deadlineTime(end) > now && deadlineTime(end) - now < 7 * 86400000);
   const reward = item.reward?.replace(/\b(usd|eur|gbp)\b/gi, (currency) => currency.toUpperCase());
 
   return (
@@ -87,6 +94,7 @@ export function CompetitionCard({
             /
           </span>
           <span>{categoryNames[item.category]}</span>
+          {item.metadataSource && <span>via {item.metadataSource.name}</span>}
           {isNew && <span className="new-listing">New</span>}
           {hasNote && <span className="note-indicator">Has note</span>}
           {archived && !snapshot && <span className="snapshot-indicator">Archived</span>}
@@ -120,7 +128,9 @@ export function CompetitionCard({
         </div>
       </div>
       <div className={`timeline-column ${soon ? "closing-soon" : ""}`}>
-        <span className="column-label">{archived ? "Ended" : "Ends"}</span>
+        <span className="column-label">
+          {archived ? "Ended" : listedOnly ? "Listed cutoff" : "Ends"}
+        </span>
         <strong>{date}</strong>
         <span>{dateNote}</span>
       </div>

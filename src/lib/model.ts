@@ -22,7 +22,13 @@ export const maxWorkspaceSize = 1_000_000;
 export const deadlineChangeSchema = z.object({
   id: z.string().min(1).max(900),
   competitionId: z.string().min(1).max(250),
-  field: z.enum(["registrationEndsAt", "submissionEndsAt", "challengeEndsAt", "eventEndsAt"]),
+  field: z.enum([
+    "registrationEndsAt",
+    "submissionEndsAt",
+    "challengeEndsAt",
+    "eventEndsAt",
+    "listedDeadline",
+  ]),
   before: date,
   after: dateValue,
   observedAt: z.iso.datetime({ offset: true }),
@@ -47,6 +53,24 @@ export const competitionSchema = z.object({
   submissionEndsAt: date,
   challengeEndsAt: date,
   eventEndsAt: date,
+  // Third-party cutoffs whose registration/submission/event meaning is not verified.
+  listedDeadline: date.optional(),
+  metadataSource: z
+    .object({
+      name: z.string().min(1).max(100),
+      url: z
+        .url({ protocol: /^https$/ })
+        .max(2048)
+        .refine((value) => {
+          try {
+            const url = new URL(value);
+            return !url.username && !url.password;
+          } catch {
+            return false;
+          }
+        }),
+    })
+    .optional(),
   registrationOpen: z.boolean().nullable(),
   participation: z.enum(["Online", "In person", "Hybrid", "Check format"]),
   location: z.string(),
@@ -167,6 +191,10 @@ export const defaultWorkspace: Workspace = workspaceSchema.parse({
 
 export function endDate(item: Competition) {
   return item.submissionEndsAt ?? item.challengeEndsAt ?? item.eventEndsAt;
+}
+// An uncertain provider cutoff can be displayed/sorted, but never proves an event ended.
+export function displayDeadline(item: Competition) {
+  return endDate(item) ?? item.listedDeadline ?? null;
 }
 export function isDateOnly(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);

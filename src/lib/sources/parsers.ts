@@ -454,6 +454,14 @@ export function parseOpenCalendar(
     return [
       competitionSchema.parse({
         ...base(platform, identifier, checkedAt),
+        ...(platform === "devpost"
+          ? {
+              metadataSource: {
+                name: "MLContests calendar",
+                url: "https://github.com/mlcontests/mlcontests.github.io",
+              },
+            }
+          : {}),
         title: text(item.name),
         url: zindi
           ? `https://zindi.world/competitions/${identifier}`
@@ -483,6 +491,177 @@ export function parseOpenCalendar(
     ];
   });
   return { items, candidates: [...candidates] };
+}
+
+function tensorHackListing(value: string) {
+  try {
+    const target = new URL(value, "https://tensorhack.com");
+    const id = target.pathname.match(/^\/hackathons\/(devpost-[a-z0-9-]+)$/)?.[1];
+    return target.origin === "https://tensorhack.com" &&
+      !target.username &&
+      !target.password &&
+      !target.search &&
+      !target.hash &&
+      id
+      ? { id, url: target.toString() }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function devpostEventLink(value: string) {
+  try {
+    const target = new URL(value);
+    const subdomain = target.hostname.match(/^([a-z0-9-]+)\.devpost\.com$/)?.[1];
+    const event =
+      subdomain &&
+      !["www", "info", "help", "support", "blog", "api", "secure"].includes(subdomain) &&
+      target.pathname === "/";
+    if (
+      target.protocol !== "https:" ||
+      target.username ||
+      target.password ||
+      target.port ||
+      (!event &&
+        !(
+          target.hostname === "devpost.com" &&
+          /^\/hackathons\/[a-z0-9-]+\/?$/i.test(target.pathname)
+        ))
+    )
+      return null;
+    target.search = "";
+    target.hash = "";
+    return target.toString();
+  } catch {
+    return null;
+  }
+}
+
+const tensorHackRow = z.object({
+  id: z
+    .string()
+    .regex(/^devpost-[a-z0-9-]+$/)
+    .max(200),
+  name: z.string().trim().min(1).max(500),
+  deadline: z.union([z.iso.date(), z.literal("OPEN"), z.literal("TBA")]).nullish(),
+});
+
+export function parseTensorHack(html: string, checkedAt: string) {
+  if (html.length > 2_000_000) throw new Error("TensorHack page exceeds size limit");
+  const $ = load(html);
+  if (!/hackathon/i.test($("h1").text())) throw new Error("TensorHack directory structure changed");
+  const listings = new Map<string, string>();
+  $("a[href]").each((_, element) => {
+    const listing = tensorHackListing($(element).attr("href") ?? "");
+    if (listing) listings.set(listing.id, listing.url);
+  });
+  const official = new Map<string, string>();
+  let collection = false;
+  $("script[type='application/ld+json']").each((_, element) => {
+    let roots: unknown;
+    try {
+      roots = JSON.parse($(element).text());
+    } catch {
+      return;
+    }
+    for (const root of Array.isArray(roots) ? roots : [roots]) {
+      const parsed = z
+        .object({
+          "@type": z.literal("CollectionPage"),
+          mainEntity: z.object({ itemListElement: z.array(z.unknown()) }),
+        })
+        .safeParse(root);
+      if (!parsed.success) continue;
+      collection = true;
+      for (const entry of parsed.data.mainEntity.itemListElement) {
+        const ref = z
+          .object({ item: z.object({ url: z.string(), significantLink: z.string() }) })
+          .safeParse(entry);
+        if (!ref.success) continue;
+        const listing = tensorHackListing(ref.data.item.url);
+        const destination = devpostEventLink(ref.data.item.significantLink);
+        if (listing && destination && listings.has(listing.id))
+          official.set(listing.id, destination);
+      }
+    }
+  });
+  // Read the public page's JSON serialization only. Never evaluate scripts or call /api/.
+  let stream = "";
+  $("script:not([src]):not([type])").each((_, element) => {
+    const match = $(element)
+      .text()
+      .trim()
+      .match(/^self\.__next_f\.push\((\[[\s\S]*\])\);?$/);
+    if (!match) return;
+    try {
+      const chunk = JSON.parse(match[1]);
+      if (Array.isArray(chunk) && chunk[0] === 1 && typeof chunk[1] === "string")
+        stream += chunk[1];
+    } catch {
+      /* Unrelated scripts are not data. */
+    }
+  });
+  let rows: unknown[] | undefined;
+  for (const line of stream.split("\n")) {
+    const match = line.match(/^[a-f0-9]+:(\[[\s\S]*)$/i);
+    if (!match) continue;
+    try {
+      const frame = JSON.parse(match[1]);
+      if (!Array.isArray(frame) || frame[0] !== "$" || !frame[3] || typeof frame[3] !== "object")
+        continue;
+      const candidate = frame[3].items;
+      if (
+        Array.isArray(candidate) &&
+        (!candidate.length ||
+          candidate.some(
+            (row) =>
+              row && typeof row === "object" && "id" in row && "name" in row && "deadline" in row,
+          )) &&
+        (!rows || candidate.length > rows.length)
+      )
+        rows = candidate;
+    } catch {
+      /* Other Flight record types do not contain listing rows. */
+    }
+  }
+  if (!collection || !rows || rows.length > 10_000)
+    throw new Error("TensorHack listing data changed");
+  const items = new Map<string, Competition>();
+  let skipped = 0;
+  for (const raw of rows) {
+    if (
+      !raw ||
+      typeof raw !== "object" ||
+      !("id" in raw) ||
+      typeof raw.id !== "string" ||
+      !raw.id.startsWith("devpost-")
+    )
+      continue;
+    const parsed = tensorHackRow.safeParse(raw);
+    if (!parsed.success || !listings.has(raw.id)) {
+      skipped++;
+      continue;
+    }
+    const row = parsed.data;
+    const listing = listings.get(row.id)!;
+    const deadline =
+      row.deadline && z.iso.date().safeParse(row.deadline).success ? row.deadline : null;
+    const item = competitionSchema.parse({
+      ...base("devpost", `tensorhack:${row.id.slice(8)}`, checkedAt),
+      title: row.name.replace(/\s+/g, " ").trim(),
+      url: official.get(row.id) ?? listing,
+      metadataSource: { name: "TensorHack", url: listing },
+      listedDeadline: deadline,
+      description:
+        "Devpost-listed opportunity discovered through TensorHack. Verify the official rules and timeline before entering.",
+      category: "Hackathon",
+      organizer: "Check organizer rules",
+      image: null,
+    });
+    items.set(item.id, item);
+  }
+  return { items: [...items.values()], skipped };
 }
 
 export function parseZindiCalendar(data: unknown, checkedAt: string) {

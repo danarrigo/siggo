@@ -16,7 +16,7 @@ The restrictions apply to how users "otherwise use the Site", not just content t
 
 Running a collector for a private application does not itself establish an exception to that wording. The compliant route is a specifically authorized feed/integration or permission from Devpost, rather than assuming that public visibility authorizes automated collection.
 
-Siggo currently checks an openly licensed third-party competition calendar instead of collecting Devpost's directory. When that calendar has no matching active entries, the app directs the owner to browse Devpost manually.
+Siggo never requests Devpost competition pages or APIs. It now combines the licensed third-party calendar with public TensorHack titles, published links and dates, under the owner's separate, explicit permission-unverified working assumption. No TensorHack reuse/export license was verified. Provider cutoffs stay separate from official timeline fields, records retain linked provenance, and unknown official destinations point to TensorHack rather than invented Devpost URLs. Collection checks crawler rules, waits at least three seconds, stops at access/rate/server blocks and preserves Retry-After pauses. See [indirect-source evidence and implementation](devpost-alternatives.md).
 
 ## Zindi
 
@@ -61,4 +61,4 @@ A live local-browser test traversed all 1,567 published directory entries and co
 
 ## Scope of this investigation
 
-The initial access-policy investigation used terms and official documentation; the Codabench improvement uses its existing public API integration. The later Zindi public-page collector follows the owner's explicit working assumption described above, not verified platform authorization. Devpost remains calendar/manual only. No platform-wide legal conclusion is inferred from robots rules, a publicly reachable endpoint, or an open-source code license alone.
+The initial access-policy investigation used terms and official documentation; the Codabench improvement uses its existing public API integration. The later Zindi public-page collector follows the owner's explicit working assumption described above, not verified platform authorization. Devpost itself remains unrequested; its indirect TensorHack coverage uses a separately approved, permission-unverified assumption, not a verified publisher license. No platform-wide legal conclusion is inferred from robots rules, a publicly reachable endpoint, or an open-source code license alone.

@@ -128,6 +128,24 @@ const competitions = [
     challengeEndsAt: after(40),
   }),
   item({
+    id: "devpost:tensorhack:community-fixture",
+    source: "devpost",
+    title: "Community Builder Hack",
+    description:
+      "A clearly fictional E2E third-party metadata listing with an unverified cutoff type.",
+    category: "Hackathon",
+    url: "https://tensorhack.com/hackathons/devpost-community-fixture",
+    metadataSource: {
+      name: "TensorHack",
+      url: "https://tensorhack.com/hackathons/devpost-community-fixture",
+    },
+    listedDeadline: after(6).slice(0, 10),
+    opensAt: null,
+    challengeEndsAt: null,
+    participation: "Check format",
+    location: "Check organizer rules",
+  }),
+  item({
     id: "evalai:expired",
     title: "An Archived Competition",
     challengeEndsAt: after(-1),
@@ -141,18 +159,16 @@ const catalog: Catalog = {
     state:
       source.id === "kaggle"
         ? "not-configured"
-        : source.id === "devpost"
-          ? "manual"
-          : ["zindi", "codabench"].includes(source.id)
-            ? "partial"
-            : "healthy",
+        : ["zindi", "codabench", "devpost"].includes(source.id)
+          ? "partial"
+          : "healthy",
     note:
       source.id === "codabench"
         ? `${source.note} 81 public entries discovered (directory complete); 1 phase check this refresh; 80 known IDs not yet verified. Checks resume across refreshes.`
         : source.note,
     count: competitions.filter((item) => item.source === source.id).length,
-    checkedAt: ["kaggle", "devpost"].includes(source.id) ? null : after(0),
-    lastSuccessAt: ["kaggle", "devpost"].includes(source.id) ? null : after(0),
+    checkedAt: source.id === "kaggle" ? null : after(0),
+    lastSuccessAt: source.id === "kaggle" ? null : after(0),
   })),
   updatedAt: after(0),
   // Fictional server-only progress metadata must not be serialized into the dashboard.

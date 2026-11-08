@@ -89,7 +89,11 @@ export function rankCompetition(
       if (days < 7) score -= 3;
     }
   } else {
-    cautions.push("End date not published");
+    cautions.push(
+      item.listedDeadline
+        ? "Only a provider-listed cutoff; official timeline unverified"
+        : "End date not published",
+    );
   }
 
   // Feedback nudges shared topics, but never changes factual eligibility.

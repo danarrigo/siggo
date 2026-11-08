@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { type Competition, type Profile } from "@/lib/model";
+import { canonicalUrl, type Competition, type Profile } from "@/lib/model";
 import { formatDate } from "@/lib/ranking";
 import type { Ranked } from "./competition-card";
 import { CompetitionCover } from "./competition-cover";
@@ -51,7 +51,10 @@ export function DetailDialog({
     ["Submission deadline", item.submissionEndsAt],
     ["Challenge ends", item.challengeEndsAt],
     ["Event ends", item.eventEndsAt],
+    ["Provider-listed cutoff", item.listedDeadline],
   ];
+  const listingLink =
+    item.metadataSource && canonicalUrl(item.url) === canonicalUrl(item.metadataSource.url);
   return (
     <Dialog
       open
@@ -119,7 +122,10 @@ export function DetailDialog({
           </div>
           <div>
             <span>Prize / reward</span>
-            <strong>{item.reward || "Not published"}</strong>
+            <strong>
+              {item.reward ||
+                (item.metadataSource ? "Not captured in this listing" : "Not published")}
+            </strong>
           </div>
           <div>
             <span>Entry fee</span>
@@ -149,13 +155,15 @@ export function DetailDialog({
               .map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
-                  <dd>{formatDate(value, true)}</dd>
+                  <dd>{formatDate(value ?? null, true)}</dd>
                 </div>
               ))}
           </dl>
           <p>
             Event and challenge end dates are not automatically registration or submission
             deadlines.
+            {item.listedDeadline &&
+              " A provider-listed cutoff has an unverified type and does not establish registration, submission, or event end."}
           </p>
         </section>
         <div className="eligibility-notice">
@@ -195,6 +203,22 @@ export function DetailDialog({
             </div>
           </form>
         </section>
+        {item.metadataSource && (
+          <p className="source-provenance">
+            Metadata via{" "}
+            <a
+              href={item.metadataSource.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              {item.metadataSource.name}
+            </a>
+            .
+            {item.listedDeadline &&
+              " Listed cutoffs are unverified; check the organizer's published timeline."}
+          </p>
+        )}
         <p className="source-provenance">
           {item.source === "manual"
             ? "Personal listing last edited"
@@ -225,7 +249,8 @@ export function DetailDialog({
             </Button>
           )}
           <a href={item.url} target="_blank" rel="noopener noreferrer" className="primary-link">
-            Official challenge <ArrowUpRight size={16} />
+            {listingLink ? `View ${item.metadataSource!.name} listing` : "Official challenge"}{" "}
+            <ArrowUpRight size={16} />
           </a>
         </div>
       </DialogContent>

@@ -32,7 +32,7 @@ import {
   canonicalUrl,
   categories,
   deadlineTime,
-  endDate,
+  displayDeadline,
   isActive,
 } from "@/lib/model";
 import { formatDate, rankCompetition } from "@/lib/ranking";
@@ -157,8 +157,8 @@ export function Dashboard({
     .sort((a, b) =>
       sort === "relevance"
         ? b.rank.score - a.rank.score || a.item.title.localeCompare(b.item.title)
-        : ((endDate(a.item) ? deadlineTime(endDate(a.item)!) : Infinity) -
-            (endDate(b.item) ? deadlineTime(endDate(b.item)!) : Infinity)) *
+        : ((displayDeadline(a.item) ? deadlineTime(displayDeadline(a.item)!) : Infinity) -
+            (displayDeadline(b.item) ? deadlineTime(displayDeadline(b.item)!) : Infinity)) *
             (view === "Saved" && savedView === "archive" ? -1 : 1) ||
           a.item.title.localeCompare(b.item.title),
     );
@@ -484,9 +484,7 @@ export function Dashboard({
               >
                 <option value="relevance">Relevance</option>
                 <option value="deadline">
-                  {view === "Saved" && savedView === "archive"
-                    ? "Recently ended"
-                    : "Ending soonest"}
+                  {view === "Saved" && savedView === "archive" ? "Recently ended" : "Nearest date"}
                 </option>
               </select>
             </label>
@@ -526,7 +524,7 @@ export function Dashboard({
           </div>
           <div className="list-labels" aria-hidden="true">
             <span>COMPETITION</span>
-            <span>{view === "Saved" && savedView === "archive" ? "ENDED" : "ENDS"}</span>
+            <span>{view === "Saved" && savedView === "archive" ? "ENDED" : "DATE"}</span>
             <span>PRIZE / REWARD</span>
             <span />
           </div>
