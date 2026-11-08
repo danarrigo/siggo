@@ -2,12 +2,13 @@
   <img src="src/app/icon.svg" alt="Siggo icon" width="56" height="56" />
   <h1>Siggo</h1>
   <p><strong>Less searching. More building.</strong></p>
-  <p>A private workspace for discovering and tracking ML competitions, hackathons, and research challenges.</p>
+  <p>An open-source, private-by-default workspace for discovering and tracking ML competitions, hackathons, and research challenges.</p>
   <p>
     <a href="https://siggo.vercel.app">Open Siggo</a> ·
     <a href="#quickstart">Quickstart</a> ·
     <a href="docs/sources.md">Source coverage</a> ·
-    <a href="docs/deployment.md">Deployment</a>
+    <a href="docs/deployment.md">Deployment</a> ·
+    <a href="LICENSE">MIT license</a>
   </p>
   <p><sub>Next.js · React · TypeScript · Neon Postgres · Better Auth</sub></p>
 </div>
@@ -80,6 +81,8 @@ Public catalog snapshots and private workspaces are stored separately. Source re
 | [Deployment](docs/deployment.md)                                   | Private GitHub sign-in, environment variables, Neon, and scheduled sync |
 | [Sources and data](docs/sources.md)                                | Integration boundaries, provenance, image handling, and uncertainty     |
 | [Architecture](docs/architecture.md)                               | Data flow, module map, persistence, and concurrency guarantees          |
+| [Contributing](CONTRIBUTING.md)                                    | Development standards, source changes, and pull requests                |
+| [Third-party notices](THIRD_PARTY_NOTICES.md)                      | Upstream UI notices and the separate rights for source data and images  |
 | [Access research](docs/research/source-access.md)                  | Primary-source evidence for Devpost, Zindi, and Codabench               |
 | [Indirect Devpost research](docs/research/devpost-alternatives.md) | Feed evaluation and the TensorHack working assumption                   |
 
@@ -97,4 +100,6 @@ npm audit
 
 ---
 
-Siggo is a private, personal project. It helps you discover opportunities, not automate submissions or replace the organizer's rules. Source availability, eligibility, and deadlines always deserve a final check.
+Siggo's original code and documentation are open source under the [MIT License](LICENSE). The hosted workspace remains private. Third-party metadata, images, and trademarks retain their own rights; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
+Siggo helps you discover opportunities, not automate submissions or replace the organizer's rules. Source availability, eligibility, and deadlines always deserve a final check.

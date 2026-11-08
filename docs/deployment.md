@@ -4,7 +4,7 @@
 
 Siggo runs on **Vercel Hobby + Neon Free**, with the application and database in Singapore. GitHub OAuth provides private workspace access. No external browser service, paid notification service, or separate job runner is required.
 
-The live instance is [siggo.vercel.app](https://siggo.vercel.app). It requires the allowed GitHub account; the repository is private as well.
+The live instance is [siggo.vercel.app](https://siggo.vercel.app) and requires the allowed GitHub account. The source code is open source under [MIT](../LICENSE); publishing the repository does not make the hosted catalog or personal workspaces public.
 
 ## 1. Create the Vercel project
 
@@ -98,10 +98,10 @@ Verify an actual scheduled invocation separately from an authenticated manual sy
 
 ## Release workflow
 
-The private [GitHub repository](https://github.com/danarrigo/siggo) is connected to Vercel:
+The [GitHub repository](https://github.com/danarrigo/siggo) is connected to Vercel:
 
 - Pushes to `main` trigger GitHub checks and an automatic production deployment.
-- Pull requests run checks and receive preview deployments without production credentials.
+- Pull requests run checks. Preview availability depends on Vercel permissions and deployment approval; previews must not receive production credentials.
 - CI and deployment are independent. A green build is not proof of a healthy deployment, and deployment does not wait for CI to succeed.
 
 ## Verification checklist
