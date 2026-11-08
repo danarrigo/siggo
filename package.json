@@ -1,6 +1,7 @@
 {
   "name": "siggo",
   "version": "0.1.0",
+  "description": "A private workspace for discovering and tracking ML competitions, hackathons, and research challenges.",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,8 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "format": "prettier --write src tests .github '*.ts' '*.mjs' package.json components.json vercel.json tsconfig.json README.md",
-    "format:check": "prettier --check src tests .github '*.ts' '*.mjs' package.json components.json vercel.json tsconfig.json README.md",
+    "format": "prettier --write src tests docs .github '*.ts' '*.mjs' package.json components.json vercel.json tsconfig.json README.md",
+    "format:check": "prettier --check src tests docs .github '*.ts' '*.mjs' package.json components.json vercel.json tsconfig.json README.md",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
