@@ -34,6 +34,20 @@ export const deadlineChangeSchema = z.object({
   observedAt: z.iso.datetime({ offset: true }),
 });
 export type DeadlineChange = z.infer<typeof deadlineChangeSchema>;
+const sourceLinkSchema = z.object({
+  name: z.string().min(1).max(100),
+  url: z
+    .url({ protocol: /^https$/ })
+    .max(2048)
+    .refine((value) => {
+      try {
+        const url = new URL(value);
+        return !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }),
+});
 export const competitionSchema = z.object({
   id: z.string().min(1),
   source: z.enum([...sourceIds, "manual"]),
@@ -42,7 +56,11 @@ export const competitionSchema = z.object({
   description: z.string().max(2000),
   // Optional so existing stored catalog snapshots remain readable.
   image: z
-    .object({ url: z.url({ protocol: /^https$/ }), kind: z.enum(["cover", "logo"]) })
+    .object({
+      url: z.url({ protocol: /^https$/ }),
+      kind: z.enum(["cover", "logo"]),
+      attribution: sourceLinkSchema.optional(),
+    })
     .nullish(),
   category: z.enum(categories),
   tags: z.array(z.string().max(100)).max(40),
@@ -55,22 +73,7 @@ export const competitionSchema = z.object({
   eventEndsAt: date,
   // Third-party cutoffs whose registration/submission/event meaning is not verified.
   listedDeadline: date.optional(),
-  metadataSource: z
-    .object({
-      name: z.string().min(1).max(100),
-      url: z
-        .url({ protocol: /^https$/ })
-        .max(2048)
-        .refine((value) => {
-          try {
-            const url = new URL(value);
-            return !url.username && !url.password;
-          } catch {
-            return false;
-          }
-        }),
-    })
-    .optional(),
+  metadataSource: sourceLinkSchema.optional(),
   registrationOpen: z.boolean().nullable(),
   participation: z.enum(["Online", "In person", "Hybrid", "Check format"]),
   location: z.string(),

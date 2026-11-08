@@ -45,7 +45,7 @@ export function CompetitionCover({
         <Image
           key={source}
           src={source}
-          alt={`Organizer artwork for ${item.title}`}
+          alt={`${kind === "logo" ? "Organizer logo" : "Organizer artwork"} for ${item.title}`}
           fill
           sizes={sizes}
           loading={eager ? "eager" : "lazy"}

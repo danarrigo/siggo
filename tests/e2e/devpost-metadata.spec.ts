@@ -11,7 +11,7 @@ test("Devpost metadata keeps third-party provenance, uncertain cutoff labels, an
   });
   await page.goto("/");
   await page.getByRole("combobox", { name: "Filter by source" }).selectOption("devpost");
-  const card = page.getByTestId("competition-card");
+  const card = page.getByTestId("competition-card").filter({ hasText: "Community Builder Hack" });
   await expect(card).toHaveCount(1);
   await expect(card.getByText("via TensorHack", { exact: true })).toBeVisible();
   await expect(card.getByText("Listed cutoff · time unlisted", { exact: true })).toBeVisible();

@@ -4,6 +4,14 @@ export const kagglePreviewPrefix = "https://www.kaggle.com/open-graph/images/Com
 export const competitionImagePatterns = [
   {
     protocol: "https",
+    hostname: "raw.githubusercontent.com",
+    port: "",
+    pathname:
+      "/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+    search: "",
+  },
+  {
+    protocol: "https",
     hostname: "zindi-public-release.s3.eu-west-2.amazonaws.com",
     port: "",
     pathname: "/uploads/competition/image/**",
@@ -102,7 +110,9 @@ export function competitionImageUrl(value: unknown, base?: string): string | nul
     const allowed = competitionImagePatterns.some(
       (pattern) =>
         url.hostname === pattern.hostname &&
-        url.pathname.startsWith(pattern.pathname.replace(/\*\*$/, "")),
+        (pattern.pathname.endsWith("**")
+          ? url.pathname.startsWith(pattern.pathname.slice(0, -2))
+          : url.pathname === pattern.pathname),
     );
     if (!allowed) return null;
     url.hash = "";

@@ -150,6 +150,32 @@ const competitions = [
     location: "Check organizer rules",
   }),
   item({
+    id: "devpost:organizer-logo-fixture",
+    source: "devpost",
+    title: "STEM2Connect logo test",
+    description:
+      "A clearly fictional E2E listing for attributed organizer-logo rendering, not a live opportunity.",
+    category: "Hackathon",
+    url: "https://stem2connect-online-hackathon.devpost.com/",
+    metadataSource: {
+      name: "TensorHack",
+      url: "https://tensorhack.com/hackathons/devpost-stem2connect-ai-hackathon",
+    },
+    image: {
+      url: "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+      kind: "logo",
+      attribution: {
+        name: "STEM2Connect",
+        url: "https://github.com/stem4teens-sys/stem2connect-website/blob/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+      },
+    },
+    listedDeadline: after(20).slice(0, 10),
+    opensAt: null,
+    challengeEndsAt: null,
+    participation: "Check format",
+    location: "Check organizer rules",
+  }),
+  item({
     id: "evalai:expired",
     title: "An Archived Competition",
     challengeEndsAt: after(-1),

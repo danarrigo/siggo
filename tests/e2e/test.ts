@@ -10,6 +10,8 @@ export const test = base.extend({
       if (
         !source?.startsWith("https://media.eval.ai/media/logos/siggo-e2e-") &&
         source !==
+          "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg" &&
+        source !==
           "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/siggo-e2e-flood.png"
       )
         return route.abort();

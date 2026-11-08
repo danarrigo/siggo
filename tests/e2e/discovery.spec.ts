@@ -17,7 +17,7 @@ test("browse, search, filter, inspect accurate dates, and keep every active oppo
       .first()
       .evaluate((node) => node.getBoundingClientRect().top),
   ).toBeLessThan(480);
-  await expect(page.getByTestId("competition-card")).toHaveCount(9);
+  await expect(page.getByTestId("competition-card")).toHaveCount(10);
   await expect(page.getByText("An Archived Competition")).toHaveCount(0);
   await expect(
     page
@@ -26,7 +26,7 @@ test("browse, search, filter, inspect accurate dates, and keep every active oppo
       .getByText("Registration closed", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "All competitions", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(9);
+  await expect(page.getByTestId("competition-card")).toHaveCount(10);
   await page.getByRole("textbox", { name: "Search competitions" }).fill("finance");
   await expect(page.getByTestId("competition-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Forecast the Financial Frontier", exact: true }).click();
@@ -41,11 +41,11 @@ test("browse, search, filter, inspect accurate dates, and keep every active oppo
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Clear search" }).click();
   await page.getByRole("button", { name: "Hackathons", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(3);
+  await expect(page.getByTestId("competition-card")).toHaveCount(4);
   await page.getByRole("combobox", { name: "Filter by source" }).selectOption("evalai");
   await expect(page.getByRole("heading", { name: "No matching competitions" })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(9);
+  await expect(page.getByTestId("competition-card")).toHaveCount(10);
   expect(errors).toEqual([]);
 });
 
@@ -73,7 +73,7 @@ test("save, dismiss and edit preferences, preserving them across reloads", async
     }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "All competitions", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(9);
+  await expect(page.getByTestId("competition-card")).toHaveCount(10);
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Finance", exact: true }).click();

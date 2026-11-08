@@ -80,7 +80,7 @@ Public embedded JSON is parsed as data, never executed. Devpost-prefixed records
 
 Requests wait at least three seconds, or a greater applicable crawl delay. The shared 90-second budget, 2 MB directory-body limit, and 10,000-row safety bound limit work. Access/rate/server failures stop the read; valid Retry-After pauses persist. Partial reads retain known details and the independent licensed-calendar supplement.
 
-Each record keeps linked metadata provenance. Unsupported rewards, fees, eligibility, format, and official timeline remain unknown. Descriptions are generic and images are neutral placeholders. Devpost coverage stays **Limited**, even after a successful board read.
+Each record keeps linked metadata provenance. Unsupported rewards, fees, eligibility, format, and official timeline remain unknown. Descriptions are generic. Where an organizer page establishes an exact event-link match, a small curated set of attributed organizer logos can supplement the feed under the owner's permission-unverified working assumption. These are displayed as logos, not event covers, with linked credit and an explicit rights notice. Matching is by canonical event URL, never a guessed title or hostname. Unmatched listings retain neutral placeholders. Devpost coverage stays **Limited**, even after a successful board read.
 
 ## Dates keep their meaning
 
@@ -114,6 +114,7 @@ Manual listings are private workspace data. Their URLs are never automatically s
 
 Images come from source-provided listing/API metadata. Missing, broken, or rejected images use neutral placeholders, not generated artwork.
 
+- Curated organizer logos include image-source attribution in the catalog and saved snapshots. The STEM2Connect reference is restricted to its exact published logo file; no organizer-wide image-host allowance or automatic page crawl is added. See the [image investigation](research/image-coverage.md).
 - Zindi thumbnails come from each public card's CSS `background-image`, not guessed URLs or unrelated partner logos. The collector still blocks image downloads; the UI loads allowed assets through the image optimizer.
 - Remote optimization uses a strict HTTPS asset-host/path allowlist, no redirects, and a 5 MB limit. Unapproved, private, signed, and remote SVG image URLs are rejected.
 - Kaggle's numeric competition ID can provide its official Open Graph preview URL. These previews load directly with no referrer because Kaggle redirects to temporary signed assets; signed destinations and API tokens are not stored in the catalog.

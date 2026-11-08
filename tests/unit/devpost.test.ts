@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { setTimeout as delay } from "node:timers/promises";
 import { collectDevpost } from "../../src/lib/sources/devpost";
 import { parseTensorHack } from "../../src/lib/sources/parsers";
-import type { Catalog } from "../../src/lib/model";
+import {
+  competitionSchema,
+  defaultWorkspace,
+  workspaceSchema,
+  type Catalog,
+} from "../../src/lib/model";
+import { toggleSavedCompetition } from "../../src/lib/saved-competitions";
 import { tensorHackEntries, tensorHackPage } from "../fixtures/tensorhack";
 
 vi.mock("node:timers/promises", () => ({ setTimeout: vi.fn(async () => {}) }));
@@ -37,6 +43,79 @@ describe("indirect Devpost collection", () => {
       "https://tensorhack.com/hackathons",
     ]);
     expect(delay).toHaveBeenCalledWith(3000, undefined, expect.anything());
+  });
+  it("adds an attributed organizer logo only for the verified event URL without extra source requests", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return new Response(
+        url.endsWith("robots.txt")
+          ? ""
+          : tensorHackPage(
+              [tensorHackEntries[0]],
+              [
+                {
+                  id: tensorHackEntries[0].id,
+                  url: "https://stem2connect-online-hackathon.devpost.com/?utm_source=fixture",
+                },
+              ],
+            ),
+      );
+    });
+    const result = await collectDevpost(stamp, AbortSignal.timeout(1000), empty, () => undefined);
+    const item = competitionSchema.parse(result.items[0]);
+    expect(item.image).toEqual({
+      url: "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+      kind: "logo",
+      attribution: {
+        name: "STEM2Connect",
+        url: "https://github.com/stem4teens-sys/stem2connect-website/blob/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+      },
+    });
+    const saved = toggleSavedCompetition(defaultWorkspace, item);
+    expect(
+      workspaceSchema.parse(JSON.parse(JSON.stringify(saved))).savedSnapshots[item.id].image,
+    ).toEqual(item.image);
+    expect(urls).toEqual([
+      "https://tensorhack.com/robots.txt",
+      "https://tensorhack.com/hackathons",
+    ]);
+  });
+  it("does not infer an organizer logo from a similar title or a different event hostname", async () => {
+    vi.stubGlobal(
+      "fetch",
+      async (url: string) =>
+        new Response(
+          url.endsWith("robots.txt")
+            ? ""
+            : tensorHackPage(
+                [{ ...tensorHackEntries[0], name: "STEM2Connect AI Hackathon" }],
+                [{ id: tensorHackEntries[0].id, url: "https://other-stem2connect.devpost.com/" }],
+              ),
+        ),
+    );
+    expect(
+      (await collectDevpost(stamp, AbortSignal.timeout(1000), empty, () => undefined)).items[0]
+        .image,
+    ).toBeNull();
+  });
+  it("prefers existing source artwork over an organizer-logo fallback", async () => {
+    const old = previous();
+    old.competitions[0] = {
+      ...old.competitions[0],
+      url: "https://stem2connect-online-hackathon.devpost.com/",
+      image: { url: "https://media.eval.ai/media/logos/existing.png", kind: "cover" },
+    };
+    vi.stubGlobal("fetch", async () => new Response("Unavailable", { status: 503 }));
+    const result = await collectDevpost(
+      stamp,
+      AbortSignal.timeout(1000),
+      async () => {
+        throw new Error("Calendar failed");
+      },
+      () => old,
+    );
+    expect(result.items[0].image).toEqual(old.competitions[0].image);
   });
   it("does not read the directory when robots disallows it", async () => {
     const fetcher = vi.fn(async () => new Response("User-agent: *\nDisallow: /hackathons\n"));

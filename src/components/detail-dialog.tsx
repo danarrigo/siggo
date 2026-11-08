@@ -55,6 +55,7 @@ export function DetailDialog({
   ];
   const listingLink =
     item.metadataSource && canonicalUrl(item.url) === canonicalUrl(item.metadataSource.url);
+  const imageAttribution = item.image?.attribution;
   return (
     <Dialog
       open
@@ -75,6 +76,20 @@ export function DetailDialog({
             eager
             sizes="(max-width: 620px) 100vw, 565px"
           />
+          {imageAttribution && (
+            <p className="source-provenance">
+              {item.image?.kind === "logo" ? "Organizer logo" : "Artwork"} via{" "}
+              <a
+                href={imageAttribution.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                {imageAttribution.name}
+              </a>
+              . Reuse permission is unverified.
+            </p>
+          )}
           <DialogDescription>{item.description}</DialogDescription>
         </DialogHeader>
         {(snapshot || archived) && (

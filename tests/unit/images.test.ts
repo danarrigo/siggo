@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { competitionImageUrl } from "../../src/lib/competition-images";
+import { competitionSchema } from "../../src/lib/model";
 import {
   parseAIcrowd,
   parseDrivenData,
@@ -20,6 +21,38 @@ describe("competition imagery", () => {
         "https://www.aicrowd.com",
       ),
     ).toBe("https://images.aicrowd.com/images/challenges/cover.jpg");
+  });
+  it("allows only the exact verified organizer logo file and validates its attribution", () => {
+    const url =
+      "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg";
+    expect(competitionImageUrl(url)).toBe(url);
+    for (const suffix of [".png", "/other.jpg", "?token=secret"])
+      expect(competitionImageUrl(url + suffix)).toBeNull();
+    expect(competitionImageUrl(url.replace("logo.jpg", "other.jpg"))).toBeNull();
+    expect(
+      competitionImageUrl(url.replace("63825f28b74a318d955cba782c6088bd700da1be", "main")),
+    ).toBeNull();
+    expect(
+      competitionImageUrl(
+        url.replace("raw.githubusercontent.com", "raw.githubusercontent.com.evil.example"),
+      ),
+    ).toBeNull();
+    const item = parseEvalAI(
+      { count: 1, next: null, results: [{ id: 1, title: "Fixture" }] },
+      checkedAt,
+    ).items[0];
+    for (const attributionUrl of [
+      "not a URL",
+      "http://example.com",
+      "https://owner:secret@example.com",
+    ]) {
+      expect(
+        competitionSchema.safeParse({
+          ...item,
+          image: { url, kind: "logo", attribution: { name: "Fixture", url: attributionUrl } },
+        }).success,
+      ).toBe(false);
+    }
   });
   it("rejects arbitrary hosts, unrelated buckets, and unsafe media", () => {
     for (const value of [

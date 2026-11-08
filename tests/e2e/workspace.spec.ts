@@ -72,7 +72,7 @@ test("new discoveries use the previous visit, can be marked seen, and do not rem
   await page.getByRole("button", { name: /^New 0$/ }).click();
   await expect(page.getByTestId("competition-card")).toHaveCount(0);
   await page.getByRole("button", { name: "All competitions", exact: true }).click();
-  await expect(page.getByTestId("competition-card")).toHaveCount(9);
+  await expect(page.getByTestId("competition-card")).toHaveCount(10);
 });
 
 test("saved event dates produce in-app reminders without relabeling submission deadlines", async ({

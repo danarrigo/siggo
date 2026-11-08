@@ -1,11 +1,27 @@
 import { setTimeout as delay } from "node:timers/promises";
 import robotsParser from "robots-parser";
-import { canonicalUrl, deduplicate, isActive, type Catalog } from "../model";
+import { canonicalUrl, deduplicate, isActive, type Catalog, type Competition } from "../model";
 import { parseOpenCalendar, parseTensorHack } from "./parsers";
 import { request, SourceHttpError, sourceFailure, sourceUserAgent } from "./request";
 
 const directory = "https://tensorhack.com/hackathons";
 const robotsUrl = "https://tensorhack.com/robots.txt";
+
+// Curated from an organizer page linking to this exact event, never matched by title.
+// Reuse permission is unverified; this reference follows the owner's working assumption.
+const organizerLogos = new Map<string, NonNullable<Competition["image"]>>([
+  [
+    "https://stem2connect-online-hackathon.devpost.com",
+    {
+      url: "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+      kind: "logo",
+      attribution: {
+        name: "STEM2Connect",
+        url: "https://github.com/stem4teens-sys/stem2connect-website/blob/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg",
+      },
+    },
+  ],
+]);
 
 async function publicText(response: Response, limit: number) {
   const reader = response.body?.getReader();
@@ -108,7 +124,10 @@ export async function collectDevpost(
           ? `${sourceFailure(failure)}.`
           : "";
   return {
-    items: deduplicate([...items, ...(fallback ?? []), ...recovery]),
+    items: deduplicate([...items, ...(fallback ?? []), ...recovery]).map((item) => {
+      const logo = organizerLogos.get(canonicalUrl(item.url));
+      return logo && !item.image?.url ? { ...item, image: structuredClone(logo) } : item;
+    }),
     available,
     collectionMode:
       parsed || oldStatus?.collectionMode === "public-directory"

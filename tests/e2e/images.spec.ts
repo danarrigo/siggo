@@ -5,8 +5,8 @@ test("shows source images and neutral placeholders without generated filler", as
 }, info) => {
   await page.goto("/");
   const cards = page.getByTestId("competition-card");
-  await expect(cards).toHaveCount(9);
-  await expect(cards.getByTestId("competition-cover")).toHaveCount(9);
+  await expect(cards).toHaveCount(10);
+  await expect(cards.getByTestId("competition-cover")).toHaveCount(10);
   const arena = cards.filter({ hasText: "Neural Arena: Multi-agent Simulation" });
   const image = arena.getByRole("img", {
     name: "Organizer artwork for Neural Arena: Multi-agent Simulation",
@@ -133,6 +133,8 @@ test("the image optimizer rejects private network and unapproved image hosts", a
     "https://evil.example/cover.png",
     "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/avatars/private.png",
     "https://zindi-public-release.s3.eu-west-2.amazonaws.com/uploads/competition/image/1234/flood.png?token=secret",
+    "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/63825f28b74a318d955cba782c6088bd700da1be/assets/logo.jpg/other.jpg",
+    "https://raw.githubusercontent.com/stem4teens-sys/stem2connect-website/main/assets/logo.jpg",
   ]) {
     const response = await request.get(`/_next/image?url=${encodeURIComponent(url)}&w=640&q=75`);
     expect(response.status()).toBe(400);

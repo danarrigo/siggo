@@ -42,7 +42,7 @@ The [MLContests calendar](https://github.com/mlcontests/mlcontests.github.io) is
 
 Source metadata and linked images remain subject to the original publishers' terms and applicable rights. Listing a platform does not imply endorsement or a platform-wide reuse grant. No rights to source artwork, logos, or trademarks are conveyed by Siggo's code license.
 
-Zindi and TensorHack collection follow owner-approved, permission-unverified working assumptions. Those assumptions are not verified publisher permission and do not transfer to another operator as a license. Review the current source terms before running your own collectors. Devpost pages and APIs are not collected.
+Zindi and TensorHack collection, and the small curated set of event-matched organizer-logo references, follow owner-approved, permission-unverified working assumptions. Those assumptions are not verified publisher permission and do not transfer to another operator as a license. Review the current source terms before running your own collectors. Devpost pages and APIs are not collected.
 
 See [Sources and data](docs/sources.md), [source-access research](docs/research/source-access.md), and [indirect Devpost research](docs/research/devpost-alternatives.md) for provenance, attribution, and access boundaries.
 
