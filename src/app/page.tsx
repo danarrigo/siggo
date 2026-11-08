@@ -13,7 +13,9 @@ export default async function Home() {
       <div className="gate-page">
         <section className="gate-card">
           <Brand />
-          <h1>Connect your private workspace.</h1>
+          <h1>
+            Connect your <span className="text-highlight">private workspace.</span>
+          </h1>
           <p>
             The app is ready. Finish configuring the database and private sign-in before your
             catalog or personal profile is exposed on this deployment.
@@ -36,7 +38,9 @@ export default async function Home() {
       <div className="gate-page">
         <section className="gate-card">
           <Brand />
-          <h1>Sign in to Siggo</h1>
+          <h1>
+            Sign in to <span className="text-highlight">Siggo</span>
+          </h1>
           <p>Use your allowed GitHub account to access saved competitions and preferences.</p>
           <SignIn />
         </section>

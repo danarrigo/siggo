@@ -68,7 +68,9 @@ export function PreferencesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="preferences-dialog">
         <DialogHeader>
-          <DialogTitle>Preferences</DialogTitle>
+          <DialogTitle>
+            <span className="text-highlight">Preferences</span>
+          </DialogTitle>
           <DialogDescription>
             Used to sort recommendations. All competitions remain available.
           </DialogDescription>

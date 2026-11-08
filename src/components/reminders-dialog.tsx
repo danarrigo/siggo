@@ -38,7 +38,9 @@ export function RemindersDialog({
     >
       <DialogContent className="reminders-dialog">
         <DialogHeader>
-          <DialogTitle>Reminders and updates</DialogTitle>
+          <DialogTitle>
+            Reminders and <span className="text-highlight">updates</span>
+          </DialogTitle>
           <DialogDescription>
             Saved-listing changes and upcoming deadlines. In-app only; no email or push
             notifications.

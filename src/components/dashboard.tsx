@@ -335,7 +335,9 @@ export function Dashboard({
         <section className="directory-heading">
           <div>
             <div className="heading-title">
-              <h1>Competitions</h1>
+              <h1>
+                <span className="text-highlight">Competitions</span>
+              </h1>
               <Button
                 variant="outline"
                 className="add-competition"
@@ -706,7 +708,9 @@ export function Dashboard({
         <Dialog open onOpenChange={setCoverageOpen}>
           <DialogContent className="coverage-dialog">
             <DialogHeader>
-              <DialogTitle>Source coverage</DialogTitle>
+              <DialogTitle>
+                Source <span className="text-highlight">coverage</span>
+              </DialogTitle>
               <DialogDescription>
                 What is connected, when it was checked, and what is missing.
               </DialogDescription>

@@ -40,6 +40,7 @@
   --border: #dedbd3;
   --accent-ink: #a5452e;
   --quiet: #68665e;
+  --text-highlight: #ead7b5;
 }
 @layer base {
   * {
@@ -94,6 +95,19 @@
     background: #e9cbbd;
     color: #292a26;
   }
+}
+.text-highlight {
+  padding-inline: 0.08em;
+  margin-inline: -0.08em;
+  background-image: linear-gradient(
+    178deg,
+    transparent 55%,
+    var(--text-highlight) 56%,
+    var(--text-highlight) 87%,
+    transparent 88%
+  );
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 .skip-link {
   position: fixed;

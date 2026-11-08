@@ -85,7 +85,9 @@ export function DetailDialog({
           </div>
         )}
         <section className="match-explanation">
-          <h3>Why this is listed</h3>
+          <h3>
+            <span className="text-highlight">Why this is listed</span>
+          </h3>
           {rank.reasons.length ? (
             <ul>
               {rank.reasons.map((reason) => (
