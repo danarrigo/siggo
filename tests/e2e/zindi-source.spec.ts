@@ -30,9 +30,24 @@ function fixtureBrowser(
   paths: string[],
   failed: string[] = [],
   hovered: string[] = [],
+  closedDuringResponse?: string[],
 ) {
   return async (signal: AbortSignal) => {
     const session = await openZindiPage(signal);
+    if (closedDuringResponse) {
+      let responding = false;
+      session.page.on("response", () => {
+        responding = true;
+        queueMicrotask(() => {
+          responding = false;
+        });
+      });
+      const close = session.page.close.bind(session.page);
+      session.page.close = (options) => {
+        if (responding) closedDuringResponse.push(session.page.url());
+        return close(options);
+      };
+    }
     session.page.on("requestfailed", (request) => {
       failed.push(request.url());
     });
@@ -98,7 +113,8 @@ test("serverless browser reads paginated public metadata without past or account
 });
 
 test("access/rate block stops further timeline visits and retains Retry-After", async () => {
-  const paths: string[] = [];
+  const paths: string[] = [],
+    closedDuringResponse: string[] = [];
   const result = await collectZindi(
     stamp,
     AbortSignal.timeout(30_000),
@@ -111,6 +127,9 @@ test("access/rate block stops further timeline visits and retains Retry-After", 
         "/competitions/two": { body: timeline },
       },
       paths,
+      [],
+      [],
+      closedDuringResponse,
     ),
   );
   expect(result.partial).toBe(true);
@@ -119,6 +138,37 @@ test("access/rate block stops further timeline visits and retains Retry-After", 
   expect(result.note).toContain("retry pause");
   expect(Date.parse(result.retryAt!)).toBeGreaterThan(Date.now());
   expect(paths).toEqual(["/competitions", "/competitions/one"]);
+  // Closing from the response event can dispose a still-in-flight navigation reply.
+  expect(closedDuringResponse).toEqual([]);
+});
+
+test("a public rendering request block interrupts DOM waits without racing navigation cleanup", async () => {
+  const paths: string[] = [],
+    closedDuringResponse: string[] = [];
+  const budget = AbortSignal.timeout(20_000);
+  const result = await collectZindi(
+    stamp,
+    budget,
+    async () => ({ data: [] }),
+    () => undefined,
+    fixtureBrowser(
+      {
+        "/competitions": {
+          body: "<h2>Loading public challenges</h2><script>setTimeout(()=>fetch('/public-fixture-block'),20)</script>",
+        },
+        "/public-fixture-block": { body: "Slow down", status: 429, retryAfter: "300" },
+      },
+      paths,
+      [],
+      [],
+      closedDuringResponse,
+    ),
+  );
+  expect(budget.aborted).toBe(false);
+  expect(result.partial).toBe(true);
+  expect(Date.parse(result.retryAt!)).toBeGreaterThan(Date.now());
+  expect(paths).toEqual(["/competitions", "/public-fixture-block"]);
+  expect(closedDuringResponse).toEqual([]);
 });
 
 test("an interrupted refresh prioritizes older timeline checks next time", async () => {

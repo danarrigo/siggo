@@ -63,6 +63,12 @@ export async function collectZindi(
     let lastNavigation = Date.now();
     session = await openPage(budget);
     const page = session.page;
+    let rejectBlocked!: (error: SourceHttpError) => void;
+    const denial = new Promise<never>((_, reject) => {
+      rejectBlocked = reject;
+    });
+    void denial.catch(() => {});
+    const wait = <T>(operation: Promise<T>) => Promise.race([operation, denial]);
     page.on("response", (response) => {
       const url = new URL(response.url());
       if (
@@ -70,7 +76,8 @@ export async function collectZindi(
         ([401, 403, 429].includes(response.status()) || response.status() >= 500)
       ) {
         blocked = new SourceHttpError(response.status(), response.headers()["retry-after"] ?? null);
-        void page.close().catch(() => {});
+        // Reject DOM waits, not the transport: closing here can dispose an in-flight goto reply.
+        rejectBlocked(blocked);
       }
     });
     const navigate = async (url: string, selector: string) => {
@@ -80,31 +87,36 @@ export async function collectZindi(
       await delay(Math.max(0, interval - (Date.now() - lastNavigation)), undefined, {
         signal: budget,
       });
+      if (blocked) throw blocked;
       lastNavigation = Date.now();
+      // Let navigation settle before the finally block closes its browser/context.
       const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 18_000 });
+      if (blocked) throw blocked;
       if (!response?.ok())
         throw new SourceHttpError(
           response?.status() ?? 0,
           response?.headers()["retry-after"] ?? null,
         );
       if (page.url() !== url) throw new Error("Unexpected Zindi navigation");
-      await page.locator(selector).first().waitFor({ timeout: 18_000 });
+      await wait(page.locator(selector).first().waitFor({ timeout: 18_000 }));
       if (blocked) throw blocked;
       return page.content();
     };
     await navigate(directory, "h2");
-    await page
-      .getByRole("heading", { name: /^Open Challenges:\s*\d+$/i })
-      .waitFor({ timeout: 18_000 });
+    await wait(
+      page.getByRole("heading", { name: /^Open Challenges:\s*\d+$/i }).waitFor({ timeout: 18_000 }),
+    );
     const heading = await page
       .getByRole("heading", { name: /^Open Challenges:\s*\d+$/i })
       .textContent();
     if (!/^Open Challenges:\s*0$/i.test(heading?.trim() ?? ""))
-      await page
-        .locator(zindiCardSelector)
-        .locator("[class*='Competition__title'] a[href]")
-        .first()
-        .waitFor({ timeout: 18_000 });
+      await wait(
+        page
+          .locator(zindiCardSelector)
+          .locator("[class*='Competition__title'] a[href]")
+          .first()
+          .waitFor({ timeout: 18_000 }),
+      );
     let parsed = parseZindiDirectory(await page.content(), checkedAt);
     items = parsed.items;
     // Load more only inside Open Challenges, never the much larger Past section.
@@ -125,12 +137,15 @@ export async function collectZindi(
         await delay(Math.max(0, interval - (Date.now() - lastNavigation)), undefined, {
           signal: budget,
         });
+        if (blocked) throw blocked;
         lastNavigation = Date.now();
-        await button.click({ timeout: 5_000 });
-        await page.waitForFunction(
-          ({ count, selector }) => document.querySelectorAll(selector).length > count,
-          { count: before, selector: zindiCardSelector },
-          { timeout: 10_000 },
+        await wait(button.click({ timeout: 5_000 }));
+        await wait(
+          page.waitForFunction(
+            ({ count, selector }) => document.querySelectorAll(selector).length > count,
+            { count: before, selector: zindiCardSelector },
+            { timeout: 10_000 },
+          ),
         );
         if (blocked) throw blocked;
         advanced = true;
@@ -178,13 +193,15 @@ export async function collectZindi(
         await navigate(item.url, "[class*='Timeline__container']");
         const info = page.locator("[class*='Timeline__close'] [class*='Timeline__info']").first();
         if (await info.count()) {
-          await info.hover({ timeout: 2_000 });
-          await page
-            .locator("[class*='tooltip'], [role='tooltip']")
-            .first()
-            .waitFor({ state: "attached", timeout: 2_000 })
-            .catch(() => {});
+          await wait(info.hover({ timeout: 2_000 }));
+          await wait(
+            page
+              .locator("[class*='tooltip'], [role='tooltip']")
+              .first()
+              .waitFor({ state: "attached", timeout: 2_000 }),
+          ).catch(() => {});
         }
+        if (blocked) throw blocked;
         Object.assign(item, parseZindiTimeline(await page.content()), { lastSeenAt: checkedAt });
         timelines++;
       } catch (error) {
