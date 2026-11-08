@@ -296,9 +296,10 @@ describe("bounded, polite source collection", () => {
       catalog.competitions.filter((item) => item.source === "codabench").map((item) => item.id),
     ).toEqual(["codabench:11"]);
     expect(urls.some((url) => url.startsWith("https://codabench-prod."))).toBe(false);
-    expect(urls.some((url) => /zindi\.(africa|world)|devpost\.com|codalab\.lisn/.test(url))).toBe(
-      false,
-    );
+    expect(urls.filter((url) => /zindi\.(africa|world)/.test(url))).toEqual([
+      "https://zindi.world/robots.txt",
+    ]);
+    expect(urls.some((url) => /devpost\.com|codalab\.lisn/.test(url))).toBe(false);
   });
 
   it("does not follow untrusted Codabench pagination", async () => {

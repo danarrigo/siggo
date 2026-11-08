@@ -77,6 +77,8 @@ export type SourceStatus = {
   url: string;
   state: "healthy" | "partial" | "unavailable" | "not-configured" | "manual" | "retired";
   attribution?: { name: string; url: string };
+  collectionMode?: "public-directory" | "licensed-calendar";
+  retryAt?: string;
   count: number;
   checkedAt: string | null;
   lastSuccessAt: string | null;

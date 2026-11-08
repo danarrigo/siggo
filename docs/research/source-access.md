@@ -28,7 +28,16 @@ Under "Standards of Use", the terms restrict a manual process used to monitor or
 
 Do not describe this as an explicit blanket robots/scraping clause identical to Devpost's. The evidence is broader content-use restrictions, not the same wording. Searches of official Zindi pages did not establish a documented public listing API or authorization for a full-directory collector; that is not proof no API or permission route exists.
 
-Siggo's curated-calendar integration is a conservative access decision, not a claim that a direct collector is technically impossible. Clear platform permission or an explicitly authorized feed would allow reassessing it. The terms give `zindi@zindi.africa` as the contact for questions and support.
+The owner subsequently asked Siggo to assume low-rate collection of public metadata is allowed and implement it. This is a working assumption, not verified platform permission. No permission request was sent. The terms give `zindi@zindi.africa` as the contact for questions and support.
+
+Siggo now reads the rendered [public Open Challenges directory](https://zindi.world/competitions) and individual public timelines with an anonymous, identified browser. The directory includes upcoming challenges; completed/practice-only entries are not imported. The initial live verification read five open/upcoming listings and their timelines successfully, using the same serverless Chromium package as production.
+
+- Reads public title, link, reward and calendar-date facts only. Descriptions are generic; artwork, rules text, participant identities and datasets are not copied.
+- Checks [robots.txt](https://zindi.world/robots.txt) before browsing, honors applicable rules/crawl delays, spaces navigations/load-more actions at least three seconds apart, and stops on access/rate blocks or server errors. The initial robots request returned 404, which is not platform permission.
+- Reads the normal public UI instead of implementing an undocumented listing API client. The page's own public application requests are needed to render it; no account or authentication bypass is used. Its account-only participation probe is blocked rather than retried or authenticated.
+- Distinguishes the public submission-close popover from results reveal and generic Close labels. Visible popover clocks omit timezone information, so only the published calendar day is retained; UTC instants are not inferred from the browser timezone.
+- Uses the shared 90-second budget and a 50-load-more safety bound. Missing-date and older observations get priority after interruption. Incomplete reads stay Limited, retaining known details and licensed calendar fallback; calendar-only fallback retains its Curated feed label.
+- Persists valid Retry-After pauses in the existing catalog snapshot. Browser profiles are temporary, app secrets are excluded from Chromium's environment, and writes, unapproved hosts, analytics, media and redirects are blocked. No new service or database migration is required.
 
 ## Codabench
 
@@ -52,4 +61,4 @@ A live local-browser test traversed all 1,567 published directory entries and co
 
 ## Scope of this investigation
 
-The access-policy investigation used terms and official documentation. The subsequent Codabench improvement uses its existing public API integration, not a new direct scraper or undocumented full-feed integration. No permission request was sent, and Devpost/Zindi access paths were not changed. No platform-wide legal conclusion is inferred from robots rules, a publicly reachable endpoint, or an open-source code license alone.
+The initial access-policy investigation used terms and official documentation; the Codabench improvement uses its existing public API integration. The later Zindi public-page collector follows the owner's explicit working assumption described above, not verified platform authorization. Devpost remains calendar/manual only. No platform-wide legal conclusion is inferred from robots rules, a publicly reachable endpoint, or an open-source code license alone.

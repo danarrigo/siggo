@@ -1,5 +1,8 @@
+export const sourceUserAgent =
+  "SiggoCompetitionIndex/0.1 (personal discovery; public event metadata only)";
+
 const headers = {
-  "User-Agent": "SiggoCompetitionIndex/0.1 (personal discovery; public event metadata only)",
+  "User-Agent": sourceUserAgent,
   Accept: "application/json, text/html",
 };
 

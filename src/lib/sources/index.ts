@@ -15,9 +15,9 @@ import {
   parseKaggle,
   parseMLH,
   parseOpenCalendar,
-  parseZindiCalendar,
 } from "./parsers";
 import { collectCodabench } from "./codabench";
+import { collectZindi } from "./zindi";
 import { request, sourceFailure } from "./request";
 
 // Seeded by the public cache reader so local previews can retain data through a provider outage.
@@ -71,7 +71,7 @@ export const sourceDefinitions: {
     id: "zindi",
     name: "Zindi",
     url: "https://zindi.world/competitions",
-    note: "Only Zindi competitions listed in MLContests' open calendar are imported. This is not Zindi's full catalog, so live competitions may be missing. Full coverage needs an authorized Zindi feed or permission. Closing times and timezones are unlisted; prize amounts are calendar estimates.",
+    note: "Public Open Challenges directory and timelines, read anonymously with navigations at least three seconds apart. Honors crawler rules and stops at access blocks. Past/practice-only entries are excluded. Calendar dates do not imply a closing time or timezone. The licensed calendar and previous snapshots are fallbacks.",
     attribution: {
       name: "MLContests open calendar (GPL-3.0)",
       url: "https://github.com/mlcontests/mlcontests.github.io",
@@ -274,10 +274,35 @@ export async function collectCatalog(
               },
             };
           }
-          case "zindi":
-            items = parseZindiCalendar(await calendarData(), checkedAt);
-            status.state = "partial";
-            break;
+          case "zindi": {
+            const result = await collectZindi(
+              checkedAt,
+              budget,
+              calendarData,
+              () => previous ?? lastPublicCatalog,
+            );
+            items = deduplicate(result.items.filter((item) => isActive(item)));
+            return {
+              items,
+              status: {
+                ...status,
+                count: items.length,
+                state: !result.available
+                  ? ("unavailable" as const)
+                  : result.partial
+                    ? ("partial" as const)
+                    : ("healthy" as const),
+                collectionMode: result.collectionMode,
+                ...(result.retryAt ? { retryAt: result.retryAt } : {}),
+                lastSuccessAt: result.available
+                  ? checkedAt
+                  : ((previous ?? lastPublicCatalog)?.sources.find(
+                      (source) => source.id === "zindi",
+                    )?.lastSuccessAt ?? null),
+                note: `${status.note} ${result.note}`,
+              },
+            };
+          }
           case "devpost":
             try {
               items = parseOpenCalendar(await calendarData(), checkedAt, "devpost").items;

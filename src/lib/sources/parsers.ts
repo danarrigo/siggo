@@ -489,6 +489,114 @@ export function parseZindiCalendar(data: unknown, checkedAt: string) {
   return parseOpenCalendar(data, checkedAt, "zindi").items;
 }
 
+export const zindiCardSelector =
+  "[class^='Competition__container'], [class*=' Competition__container']";
+
+export function parseZindiDirectory(html: string, checkedAt: string) {
+  const $ = load(html);
+  $("script, style, iframe, form").remove();
+  let expected: number | null = null;
+  let open = false;
+  const items = new Map<string, Competition>();
+  $(`h2, ${zindiCardSelector}`).each((_, element) => {
+    const node = $(element);
+    if (node.is("h2")) {
+      const heading = node.text().replace(/\s+/g, " ").trim();
+      const count = heading.match(/^Open Challenges:\s*(\d+)$/i);
+      if (count) {
+        expected = Number(count[1]);
+        open = true;
+      } else if (/^Past Challenges:/i.test(heading)) open = false;
+      return;
+    }
+    if (!open) return;
+    const link = node.find("[class*='Competition__title'] a[href]").first();
+    const href = link.attr("href");
+    if (!href) throw new Error("Zindi competition link missing");
+    const destination = new URL(url(href, "https://zindi.world"));
+    const slug = destination.pathname.match(/^\/competitions\/([a-z0-9-]+)\/?$/i)?.[1];
+    if (!slug || destination.origin !== "https://zindi.world")
+      throw new Error("Unexpected Zindi competition URL");
+    const item = competitionSchema.parse({
+      ...base("zindi", slug, checkedAt),
+      title: link.text().replace(/\s+/g, " ").trim().slice(0, 500),
+      url: `https://zindi.world/competitions/${slug}`,
+      description:
+        "Public Zindi challenge. Check the official page for task details and participation rules.",
+      organizer: "Zindi competition organizers",
+      image: null,
+      reward:
+        node.find("[class*='Competition__reward']").first().text().replace(/\s+/g, " ").trim() ||
+        null,
+    });
+    items.set(item.id, item);
+  });
+  if (expected === null) throw new Error("Zindi directory structure changed");
+  return { items: [...items.values()], expected, complete: items.size === expected };
+}
+
+function zindiDate(value: string) {
+  const raw = value.replace(/\s+/g, " ").trim();
+  if (z.iso.datetime({ offset: true }).safeParse(raw).success) return iso(raw);
+  if (z.iso.date().safeParse(raw).success) return raw;
+  // Zindi's public timeline renders years as YY (the platform launched in 2018).
+  const match = raw.match(/^(\d{1,2}) ([A-Za-z]{3}) (\d{2}|\d{4})$/);
+  return match
+    ? calendarDate(`${match[1]} ${match[2]} ${match[3].length === 2 ? "20" : ""}${match[3]}`)
+    : null;
+}
+
+export function parseZindiTimeline(html: string) {
+  const $ = load(html);
+  $("script, style, iframe, form").remove();
+  if (!$("[class*='Timeline__container']").length)
+    throw new Error("Zindi timeline structure changed");
+  const dates: Pick<
+    Competition,
+    "opensAt" | "registrationEndsAt" | "submissionEndsAt" | "challengeEndsAt" | "eventEndsAt"
+  > = {
+    opensAt: null,
+    registrationEndsAt: null,
+    submissionEndsAt: null,
+    challengeEndsAt: null,
+    eventEndsAt: null,
+  };
+  const fields: Record<string, keyof typeof dates> = {
+    start: "opensAt",
+    close: "challengeEndsAt",
+    "registration deadline": "registrationEndsAt",
+    "submission deadline": "submissionEndsAt",
+    "event end": "eventEndsAt",
+  };
+  let recognized = 0;
+  $("[class*='Timeline__child']").each((_, element) => {
+    const row = $(element);
+    const label = row.find("[class*='Timeline__title']").clone();
+    label.find("[class*='Timeline__info']").remove();
+    const field = fields[label.text().trim().toLowerCase()];
+    if (!field) return; // Results reveal is not an event or submission deadline.
+    recognized++;
+    const cell = row.find("[class*='Timeline__date']");
+    const raw = cell.find("[datetime]").attr("datetime") ?? cell.text().trim();
+    if (!raw || /^(?:-|unlisted|ongoing|tba)$/i.test(raw)) return;
+    const parsed = zindiDate(raw);
+    if (!parsed) throw new Error("Invalid Zindi timeline date");
+    dates[field] = parsed;
+  });
+  if (!recognized) throw new Error("Zindi timeline labels changed");
+  const tooltip = $("[class*='tooltip'], [role='tooltip']").text();
+  const submission = tooltip.match(/Submission close\s*=\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\b/i);
+  if (submission) {
+    const day = calendarDate(`${submission[1]} ${submission[2].slice(0, 3)} ${submission[3]}`);
+    if (!day) throw new Error("Invalid Zindi submission date");
+    // The public popover clarifies Close as a submission/selection window, not challenge end.
+    // Its visible clock has no timezone, so retain only its explicitly published calendar day.
+    dates.submissionEndsAt = day;
+    dates.challengeEndsAt = null;
+  }
+  return dates;
+}
+
 export function parseAIcrowd(html: string, checkedAt: string) {
   const $ = load(html);
   if (!$("#challenges-div").length) throw new Error("AIcrowd listing structure changed");

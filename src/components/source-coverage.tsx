@@ -13,7 +13,10 @@ export function sourceState(source: SourceStatus, now: number) {
     return "Stale";
   return {
     healthy: "Connected",
-    partial: source.id === "zindi" ? "Curated feed" : "Limited",
+    partial:
+      source.id === "zindi" && source.collectionMode !== "public-directory"
+        ? "Curated feed"
+        : "Limited",
     unavailable: "Unavailable",
     "not-configured": "Needs key",
     manual: "Browse manually",
