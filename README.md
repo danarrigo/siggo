@@ -32,7 +32,7 @@ Competition discovery should not mean checking eight tabs, losing a shortlist, o
 - **Updates without another inbox.** In-app reminders cover the next seven days, and saved deadline changes stay unread until acknowledged. No email or push notifications.
 - **Room for your own finds.** Add private listings and notes without publishing them to the shared catalog or automatically scraping their links.
 
-The interface stays deliberately quiet: compact rows, source-provided images where available, neutral fallbacks, and warm editorial highlights. No generated competition artwork.
+The interface stays deliberately quiet: compact rows, source-provided images where available, and warm editorial highlights. A small curated set of organizer logos is matched to exact event URLs, displayed as logos rather than event covers, and linked to its source credit. Missing or unusable images retain neutral placeholders. No generated competition artwork.
 
 ## Eight integrations. Honest boundaries.
 
@@ -40,7 +40,7 @@ The interface stays deliberately quiet: compact rows, source-provided images whe
 
 Each integration exposes its scope, freshness, and failures. Codabench verification progresses across refreshes; a directory listing alone does not prove a competition is active.
 
-**Devpost coverage is indirect.** Collectors read TensorHack metadata and the licensed MLContests calendar, never Devpost pages or APIs. Zindi and TensorHack collection use owner-approved working assumptions, not verified platform permission or reuse licenses. Coverage is not exhaustive.
+**Devpost coverage is indirect.** Collectors read TensorHack metadata and the licensed MLContests calendar, never Devpost pages or APIs. Zindi and TensorHack collection, plus curated organizer-logo references, use owner-approved working assumptions, not verified publisher permission or reuse licenses. Coverage is not exhaustive.
 
 [Explore source coverage, access assumptions, and date semantics →](docs/sources.md)
 
@@ -83,6 +83,7 @@ Public catalog snapshots and private workspaces are stored separately. Source re
 | [Architecture](docs/architecture.md)                               | Data flow, module map, persistence, and concurrency guarantees          |
 | [Contributing](CONTRIBUTING.md)                                    | Development standards, source changes, and pull requests                |
 | [Third-party notices](THIRD_PARTY_NOTICES.md)                      | Upstream UI notices and the separate rights for source data and images  |
+| [Image coverage research](docs/research/image-coverage.md)         | Image sources, remaining placeholders, and organizer-logo provenance    |
 | [Access research](docs/research/source-access.md)                  | Primary-source evidence for Devpost, Zindi, and Codabench               |
 | [Indirect Devpost research](docs/research/devpost-alternatives.md) | Feed evaluation and the TensorHack working assumption                   |
 
