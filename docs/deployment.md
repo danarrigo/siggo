@@ -47,17 +47,18 @@ The OAuth app, Vercel project, database, and allowed account must be configured 
 
 The variable names and local placeholders are in [`.env.example`](../.env.example).
 
-| Variable                        | Purpose                                                         |
-| ------------------------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`                  | Neon connection string with TLS                                 |
-| `BETTER_AUTH_URL`               | Exact application origin                                        |
-| `BETTER_AUTH_SECRET`            | Independent secret of at least 32 characters                    |
-| `GITHUB_CLIENT_ID`              | GitHub OAuth client ID                                          |
-| `GITHUB_CLIENT_SECRET`          | GitHub OAuth client secret                                      |
-| `AUTH_ALLOWED_EMAIL`            | Permitted GitHub account email                                  |
-| `CRON_SECRET`                   | Independent secret of at least 32 characters for scheduled sync |
-| `KAGGLE_API_TOKEN`              | Optional server-side Kaggle Bearer token                        |
-| `KAGGLE_USERNAME`, `KAGGLE_KEY` | Legacy alternative; ignored when a token is set                 |
+| Variable                        | Purpose                                                           |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`                  | Neon connection string with TLS                                   |
+| `BETTER_AUTH_URL`               | Exact application origin                                          |
+| `BETTER_AUTH_SECRET`            | Independent secret of at least 32 characters                      |
+| `GITHUB_CLIENT_ID`              | GitHub OAuth client ID                                            |
+| `GITHUB_CLIENT_SECRET`          | GitHub OAuth client secret                                        |
+| `AUTH_ALLOWED_EMAIL`            | Permitted GitHub account email                                    |
+| `CRON_SECRET`                   | Independent secret of at least 32 characters for scheduled sync   |
+| `GROQ_API_KEY`                  | Optional server-only Ask Siggo key; keep the organization on Free |
+| `KAGGLE_API_TOKEN`              | Optional server-side Kaggle Bearer token                          |
+| `KAGGLE_USERNAME`, `KAGGLE_KEY` | Legacy alternative; ignored when a token is set                   |
 
 Generate each application secret separately:
 
@@ -79,6 +80,12 @@ npx vercel --prod
 Apply the checked-in generated migrations; do not edit their SQL or metadata by hand. Saved history, notifications, source progress, and provenance use the existing JSONB records and do not need separate services.
 
 Zindi uses bundled serverless Chromium on Vercel. Runtime assets are explicitly traced in [`next.config.ts`](../next.config.ts); a deployment must retain those files, not rely on a locally installed browser.
+
+## Optional Ask Siggo
+
+Follow [Ask Siggo setup and privacy](assistant.md) to create a dedicated Groq Free key and enable Zero Data Retention. Add `GROQ_API_KEY` to Production only and redeploy; do not put it in CI or preview environments. The model key never reaches the browser, and the assistant still requires the permitted-user session and same-origin requests.
+
+Chat reads the durable catalog without collecting sources. It excludes private workspace content and stores only server-owned operational quota counters in the existing JSONB. No new database migration is needed. Without a key, the directory remains available and chat displays setup guidance.
 
 ## Scheduled synchronization
 
@@ -115,6 +122,7 @@ The [GitHub repository](https://github.com/danarrigo/siggo) is connected to Verc
 - [ ] Anonymous cron requests return **401**; cross-origin mutations return **403**.
 - [ ] Manual sync updates the durable catalog without changing profile, notes, bookmarks, or personal listings.
 - [ ] A scheduled invocation appears in the provider's logs.
+- [ ] If enabling Ask Siggo, confirm Groq Free, model access, Zero Data Retention, and a real sourced reply; verify anonymous chat is **401** and cross-origin chat is **403**.
 - [ ] Both GitHub checks and the intended Vercel production deployment succeed.
 
 Use the owner's real sign-in for workspace verification. Do not create synthetic users or fixture records in production.

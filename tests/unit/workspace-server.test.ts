@@ -179,6 +179,23 @@ it("preserves unknown fields from a newer deployment during an in-flight older r
   expect(row).toHaveProperty("futureSetting", { keep: true });
 });
 
+it("never exposes or resets operational AI counters, including a racing request reservation", async () => {
+  const usage = { day: "2026-11-09", count: 7, lastRequestAt: 12345 };
+  row = Object.assign(baseline(), { assistantUsage: usage });
+  beforeWrite = () => {
+    row = Object.assign(baseline(), { assistantUsage: { ...usage, count: 8 } });
+  };
+  const incoming = Object.assign(
+    { ...defaultWorkspace, notes: { [item.id]: "Updated private note" } },
+    { assistantUsage: { ...usage, count: 0 } },
+  );
+  await saveWorkspace("owner", incoming);
+  expect(row).toHaveProperty("assistantUsage.count", 8);
+  expect(row?.notes[item.id]).toBe("Updated private note");
+  expect(await loadWorkspace("owner")).not.toHaveProperty("assistantUsage");
+  expect(predicates).toHaveLength(2);
+});
+
 it("legacy clients only edit fields explicitly supplied", async () => {
   await saveWorkspace(
     "owner",

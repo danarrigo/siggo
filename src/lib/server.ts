@@ -18,6 +18,7 @@ import {
   sourceIds,
   workspaceSchema,
 } from "./model";
+import { assistantCooldownSeconds, assistantDailyLimit } from "./assistant";
 import {
   acknowledgeDeadlineChanges as acknowledgeChanges,
   reconcileSavedCompetitions,
@@ -73,6 +74,42 @@ export async function loadCatalog(): Promise<Catalog> {
     return refreshCatalog();
   }
   return publicCatalog();
+}
+
+// Chat only reads the durable snapshot. It must never trigger source collection or browsing.
+export async function loadAssistantCatalog(): Promise<Catalog> {
+  const [snapshot] = await getDb()
+    .select()
+    .from(catalogSnapshots)
+    .where(eq(catalogSnapshots.id, "current"));
+  if (!snapshot) throw new Error("Catalog snapshot is unavailable");
+  return catalogForSources(snapshot.data, enabledSourceIds);
+}
+
+// Operational counters are server-only JSONB, not workspace content or chat history.
+// One conditional upsert reserves a request across devices and serverless instances.
+export async function reserveAssistantRequest(userId: string) {
+  const today = sql`(current_timestamp at time zone 'UTC')::date::text`;
+  const seconds = sql`floor(extract(epoch from current_timestamp))::bigint`;
+  const day = sql`${workspaces.data} #>> '{assistantUsage,day}'`;
+  const count = sql`coalesce((${workspaces.data} #>> '{assistantUsage,count}')::integer, 0)`;
+  const last = sql`coalesce((${workspaces.data} #>> '{assistantUsage,lastRequestAt}')::bigint, 0)`;
+  const [reserved] = await getDb()
+    .insert(workspaces)
+    .values({
+      userId,
+      data: sql`${JSON.stringify(defaultWorkspace)}::jsonb || jsonb_build_object('assistantUsage', jsonb_build_object('day', ${today}, 'count', 1, 'lastRequestAt', ${seconds}))`,
+    })
+    .onConflictDoUpdate({
+      target: workspaces.userId,
+      set: {
+        data: sql`jsonb_set(${workspaces.data}, '{assistantUsage}', jsonb_build_object('day', ${today}, 'count', case when ${day} = ${today} then ${count} + 1 else 1 end, 'lastRequestAt', ${seconds}))`,
+        updatedAt: new Date(),
+      },
+      setWhere: sql`(${day} is distinct from ${today} or ${count} < ${assistantDailyLimit}) and ${last} <= ${seconds} - ${assistantCooldownSeconds}`,
+    })
+    .returning({ userId: workspaces.userId });
+  return Boolean(reserved);
 }
 
 export async function refreshCatalog(): Promise<Catalog> {
@@ -146,6 +183,7 @@ export async function saveWorkspace(userId: string, data: Workspace, fields = Ob
     "savedSnapshots",
     "deadlineChanges",
     "trackingLimited",
+    "assistantUsage",
   ]);
   // Older tabs can edit content, but cannot erase newer tracking state or other absent fields.
   const edits = Object.fromEntries(

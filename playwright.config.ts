@@ -26,6 +26,7 @@ export default defineConfig({
       SIGNAL_E2E: "1",
       NEXT_TELEMETRY_DISABLED: "1",
       DATABASE_URL: "",
+      GROQ_API_KEY: "",
       KAGGLE_API_TOKEN: "",
       KAGGLE_USERNAME: "",
       KAGGLE_KEY: "",

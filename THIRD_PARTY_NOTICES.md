@@ -34,6 +34,10 @@ SOFTWARE.
 
 Dependencies are installed through npm rather than vendored as source. Their respective licenses apply independently; see `package.json`, `package-lock.json`, and the notices distributed with each package. Preserve applicable notices when distributing dependencies or built application bundles.
 
+## Optional model API
+
+Ask Siggo uses Groq-hosted inference under the provider's [Services Agreement](https://console.groq.com/docs/legal/services-agreement). Siggo does not distribute model weights or grant rights to the provider's services or trademarks. API availability, quotas, and billing are separate from this repository's MIT license. Review [Ask Siggo privacy and setup](docs/assistant.md) before enabling it.
+
 ## MLContests calendar
 
 The [MLContests calendar](https://github.com/mlcontests/mlcontests.github.io) is published under [GPL-3.0](https://github.com/mlcontests/mlcontests.github.io/blob/master/LICENSE). Siggo fetches relevant metadata at runtime and provides attribution in Source coverage. That dataset is not relicensed under Siggo's MIT license.

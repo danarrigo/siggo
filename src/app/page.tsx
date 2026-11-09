@@ -2,6 +2,7 @@ import { Dashboard } from "@/components/dashboard";
 import { SignIn } from "@/components/sign-in";
 import { authConfigured, localPreview, missingSettings } from "@/lib/auth";
 import { defaultWorkspace } from "@/lib/model";
+import { assistantConfigured } from "@/lib/assistant-server";
 import { currentUser, loadCatalog, loadWorkspace } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,7 @@ export default async function Home() {
       mode={preview ? "local" : "cloud"}
       now={now}
       testData={preview && process.env.SIGNAL_E2E === "1"}
+      assistantEnabled={preview ? process.env.SIGNAL_E2E === "1" : assistantConfigured()}
     />
   );
 }

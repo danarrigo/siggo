@@ -60,13 +60,19 @@ Saved snapshots are private recovery data, not a second public feed:
 
 The workspace limit is **1,000,000 serialized characters**. If automatic tracking reaches it, existing content is preserved and the UI asks the owner to free space. Dates or changes a source never exposed cannot be reconstructed retroactively.
 
+## Optional catalog assistant
+
+[Ask Siggo](assistant.md) calls Groq once per authenticated question with a bounded, keyword-selected projection of the durable catalog and recent chat text. It does not read private workspace content, collect sources, browse links, or mutate user-edited fields. Structured answers use server-owned catalog links; unsupported citations and invalid output are rejected. This constrains links and structure, not factual accuracy.
+
+Per-user request reservations use a conditional Postgres upsert and server-owned `assistantUsage` JSONB, without schema changes or another service. This operational field never reaches workspace responses and survives content writes through the existing unknown-field preservation. Chat text is not persisted. Provider credentials and error payloads stay server-side; replies are private and uncached.
+
 ## Privacy boundaries
 
 - Production and Vercel deployments never enable credential-free local preview.
 - GitHub OAuth identifies the permitted account; workspace access is checked server-side.
 - Workspace mutations require authentication and the canonical origin.
 - Scheduled sync requires a timing-safe Bearer-secret comparison.
-- Database, OAuth, Kaggle, and cron secrets remain server-side and out of cache keys and client bundles.
+- Database, OAuth, Kaggle, Groq, and cron secrets remain server-side and out of cache keys and client bundles.
 - Zindi's browser receives a small environment allowlist, not application secrets, and has a restricted read-only network surface.
 - Manual listing URLs are stored as destinations, never automatically scraped.
 
@@ -78,6 +84,7 @@ Implementation and integration tests are the authority for these boundaries. [De
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Routes, authenticated page boundary, and API handlers   | [`src/app/`](../src/app/)                                                                            |
 | Catalog, profile, date, and workspace schemas           | [`src/lib/model.ts`](../src/lib/model.ts)                                                            |
+| Catalog-grounded chat and provider limits               | [`assistant-server.ts`](../src/lib/assistant-server.ts), [`assistant.ts`](../src/lib/assistant.ts)   |
 | Explainable relevance ranking                           | [`src/lib/ranking.ts`](../src/lib/ranking.ts)                                                        |
 | Discovery, reminders, and personal-listing behavior     | [`src/lib/workspace.ts`](../src/lib/workspace.ts)                                                    |
 | Browser persistence, write queue, and synchronization   | [`src/lib/workspace-store.ts`](../src/lib/workspace-store.ts)                                        |

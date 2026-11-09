@@ -43,6 +43,12 @@ Restart the server, then refresh sources. The token stays server-side and is sen
 
 Other workspace settings are documented in [Deployment](deployment.md#environment-variables). The defaults for country, interests, compute, and participation live in [`src/lib/model.ts`](../src/lib/model.ts) and are editable in Preferences. These preferences guide ranking, not eligibility claims or membership in All.
 
+## Optional Ask Siggo
+
+See [Ask Siggo](assistant.md) for data sharing, Groq Free setup, and request limits. Live inference requires configured private authentication and a dedicated server-only `GROQ_API_KEY`; credential-free local preview cannot call the model. Never use production credentials in tests.
+
+Unit tests mock the provider. Browser tests intercept `/api/assistant`, clear the provider key, and separately verify the real route denies unauthenticated requests. No inference API calls or live model credentials are needed for CI.
+
 ## Run the checks
 
 ```bash

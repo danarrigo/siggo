@@ -30,6 +30,7 @@ Competition discovery should not mean checking eight tabs, losing a shortlist, o
 - **Dates that keep their meaning.** Registration, submission, challenge-end, and event-end dates stay distinct. Provider-listed cutoffs are labeled separately; a date without a time stays that way.
 - **A shortlist that survives the source.** Saved details and notes remain available when a listing disappears. Ended opportunities move to Archive; missing does not automatically mean ended.
 - **Updates without another inbox.** In-app reminders cover the next seven days, and saved deadline changes stay unread until acknowledged. No email or push notifications.
+- **Ask the catalog.** Optional Ask Siggo chat helps explore topics, compare listings, and explain dates with source links. It is read-only, uses Groq, and excludes private notes and preferences. [Setup and privacy](docs/assistant.md).
 - **Room for your own finds.** Add private listings and notes without publishing them to the shared catalog or automatically scraping their links.
 
 The interface stays deliberately quiet: compact rows, source-provided images where available, and warm editorial highlights. A small curated set of organizer logos is matched to exact event URLs, displayed as logos rather than event covers, and linked to its source credit. Missing or unusable images retain neutral placeholders. No generated competition artwork.
@@ -78,6 +79,7 @@ Public catalog snapshots and private workspaces are stored separately. Source re
 | Guide                                                              | What you will find                                                      |
 | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | [Development](docs/development.md)                                 | Local modes, Kaggle credentials, checks, and test fixtures              |
+| [Ask Siggo](docs/assistant.md)                                     | Optional Groq chat, privacy, free-plan setup, and limits                |
 | [Deployment](docs/deployment.md)                                   | Private GitHub sign-in, environment variables, Neon, and scheduled sync |
 | [Sources and data](docs/sources.md)                                | Integration boundaries, provenance, image handling, and uncertainty     |
 | [Architecture](docs/architecture.md)                               | Data flow, module map, persistence, and concurrency guarantees          |

@@ -676,7 +676,7 @@
   position: fixed;
   left: 50%;
   bottom: 22px;
-  z-index: 70;
+  z-index: 40;
   transform: translateX(-50%);
   display: flex;
   align-items: center;

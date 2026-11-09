@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Loader2,
   LogOut,
+  MessageCircle,
   Plus,
   RefreshCw,
   Search,
@@ -51,6 +52,7 @@ import {
 } from "@/lib/workspace";
 import { competitionLibrary, toggleSavedCompetition } from "@/lib/saved-competitions";
 import { UnavailableSavedCompetition } from "./unavailable-saved-competition";
+import { AskSiggo } from "./ask-siggo";
 
 const authClient = createAuthClient();
 type View = "For you" | "All competitions" | "Saved" | "New";
@@ -61,12 +63,14 @@ export function Dashboard({
   mode,
   now: serverNow,
   testData = false,
+  assistantEnabled = false,
 }: {
   catalog: Catalog;
   initialWorkspace: Workspace;
   mode: "local" | "cloud";
   now: number;
   testData?: boolean;
+  assistantEnabled?: boolean;
 }) {
   const router = useRouter();
   const [clientNow, setClientNow] = useState(serverNow);
@@ -101,6 +105,7 @@ export function Dashboard({
   const [source, setSource] = useState("all");
   const [sort, setSort] = useState("relevance");
   const [limit, setLimit] = useState(18);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -354,16 +359,26 @@ export function Dashboard({
                 : "Active and upcoming, across your connected sources."}
             </p>
           </div>
-          <div className="profile-summary">
-            <span>
-              {workspace.profile.country}
-              {workspace.profile.student ? " / Student" : ""}
-            </span>
-            <button onClick={() => setPreferencesOpen(true)} aria-label="Edit interests">
-              {workspace.profile.interests.length
-                ? workspace.profile.interests.slice(0, 3).join(" · ")
-                : "Set your interests"}
-              <ArrowUpRight size={13} />
+          <div className="directory-heading-actions">
+            <div className="profile-summary">
+              <span>
+                {workspace.profile.country}
+                {workspace.profile.student ? " / Student" : ""}
+              </span>
+              <button onClick={() => setPreferencesOpen(true)} aria-label="Edit interests">
+                {workspace.profile.interests.length
+                  ? workspace.profile.interests.slice(0, 3).join(" · ")
+                  : "Set your interests"}
+                <ArrowUpRight size={13} />
+              </button>
+            </div>
+            <button
+              className="assistant-trigger"
+              aria-label="Ask Siggo"
+              onClick={() => setAssistantOpen(true)}
+            >
+              <MessageCircle size={16} />
+              <span>Ask Siggo</span>
             </button>
           </div>
         </section>
@@ -646,6 +661,7 @@ export function Dashboard({
           </button>
         </div>
       )}
+      <AskSiggo open={assistantOpen} onOpenChange={setAssistantOpen} enabled={assistantEnabled} />
       {preferencesOpen && (
         <PreferencesDialog
           open
