@@ -74,6 +74,39 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+.assistant-focus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.assistant-focus > div {
+  min-width: 0;
+  flex: 1;
+}
+.assistant-focus span {
+  display: block;
+  color: var(--quiet);
+  font-size: 10px;
+}
+.assistant-focus strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 550;
+}
+.assistant-focus button {
+  flex-shrink: 0;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  min-height: 30px;
+}
 .assistant-setup,
 .assistant-error {
   flex-shrink: 0;

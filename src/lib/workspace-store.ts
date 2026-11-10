@@ -228,7 +228,8 @@ export function createWorkspaceStore(
       );
       if (!result.success) {
         publish({
-          status: "Workspace limit reached. Shorten a note or remove a personal listing.",
+          status:
+            "Workspace limit reached. Shorten notes or tasks, or remove a personal listing or plan.",
         });
         return false;
       }

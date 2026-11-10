@@ -12,7 +12,10 @@ const messageSchema = z
   .strict()
   .refine((message) => message.role !== "user" || message.content.length <= assistantQuestionLimit);
 export const assistantRequestSchema = z
-  .object({ messages: z.array(messageSchema).min(1).max(5) })
+  .object({
+    messages: z.array(messageSchema).min(1).max(5),
+    competitionId: z.string().trim().min(1).max(250).optional(),
+  })
   .strict()
   .refine(
     ({ messages }) =>

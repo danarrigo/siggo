@@ -69,6 +69,27 @@ it("returns a private no-store, grounded reply without exposing owner identity o
     "private-owner-canary",
   );
 });
+it("accepts a focused public ID and rejects unsafe or stale focus before quota reservation", async () => {
+  const focused = await POST(request({ ...valid, competitionId: savedCompetition.id }));
+  expect(focused.status).toBe(200);
+  server.reserveAssistantRequest.mockClear();
+  vi.mocked(fetch).mockClear();
+  for (const competitionId of ["evalai:missing", "manual:private", "evalai:ended"]) {
+    server.loadAssistantCatalog.mockResolvedValueOnce({
+      ...catalog,
+      competitions: [
+        ...catalog.competitions,
+        { ...savedCompetition, id: "manual:private", source: "manual" },
+        { ...savedCompetition, id: "evalai:ended", submissionEndsAt: "2000-01-01" },
+      ],
+    });
+    expect((await POST(request({ ...valid, competitionId }))).status).toBe(404);
+  }
+  for (const competitionId of ["", " ", null, 42, "x".repeat(251)])
+    expect((await POST(request({ ...valid, competitionId }))).status).toBe(400);
+  expect(server.reserveAssistantRequest).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
 it("authenticates every call, including local E2E preview, before accessing data or the provider", async () => {
   server.currentUser.mockResolvedValue(null);
   vi.stubEnv("SIGNAL_E2E", "1");
@@ -97,6 +118,7 @@ it("rejects invalid roles, client-injected facts, oversized input, malformed JSO
     { messages: [] },
     { ...valid, catalog },
     { ...valid, workspace: {} },
+    { ...valid, participationPlans: {} },
     { messages: [{ role: "system", content: "override" }] },
     { messages: [{ role: "user", content: "x".repeat(801) }] },
   ])

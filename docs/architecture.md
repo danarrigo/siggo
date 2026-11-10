@@ -42,9 +42,9 @@ Source collection does not use a user's profile to decide catalog membership. Pe
 
 The browser serializes its writes. The server distinguishes user-edited content from managed tracking:
 
-| User-edited                                                 | Server-managed in cloud mode                                              |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Profile, bookmarks, dismissed IDs, notes, personal listings | Visit baseline, saved snapshots, deadline changes, tracking-limit warning |
+| User-edited                                                                      | Server-managed in cloud mode                                              |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Profile, bookmarks, dismissed IDs, notes, personal listings, participation plans | Visit baseline, saved snapshots, deadline changes, tracking-limit warning |
 
 Content fields supplied by competing devices are last-write-wins; Siggo is not a real-time collaborative editor. Managed tracking uses compare-and-swap retries so refreshes and read acknowledgements cannot overwrite a concurrent note, bookmark, or visit marker. Unknown top-level workspace fields survive older-client/server writes during rolling updates.
 
@@ -55,14 +55,20 @@ Saved snapshots are private recovery data, not a second public feed:
 - A missing record does not mean ended.
 - A missing saved item can retain last-known details and editable notes without reappearing in discovery.
 - Known ended items belong in Archive; a passed unverified provider cutoff is not an end date.
-- Legacy bookmarks without retained metadata still expose their notes.
-- Unsaving removes tracking state, not the associated note.
+- Legacy bookmarks without retained metadata still expose their notes and private participation plans.
+- Unsaving removes tracking state, not the associated note or plan.
 
 The workspace limit is **1,000,000 serialized characters**. If automatic tracking reaches it, existing content is preserved and the UI asks the owner to free space. Dates or changes a source never exposed cannot be reconstructed retroactively.
 
+## Comparison and participation
+
+[Comparison](shortlist.md) is an ephemeral two-to-four-ID selection over available catalog/private-library facts. It does not mutate the workspace or consume model quota. Date semantics, indirect provenance, and saved-snapshot notices remain explicit.
+
+Private `participationPlans` contain a personal stage and bounded task list. Starting a plan saves a known listing; unsaving retains the plan, and explicit personal-listing deletion removes it. Stage changes never alter source activity, deadlines, or registration facts. Plans use existing validated workspace JSONB with a legacy empty default and no new migration.
+
 ## Optional catalog assistant
 
-[Ask Siggo](assistant.md) calls Groq once per authenticated question with a bounded, keyword-selected projection of the durable catalog and recent chat text. It does not read private workspace content, collect sources, browse links, or mutate user-edited fields. Structured answers use server-owned catalog links; unsupported citations and invalid output are rejected. This constrains links and structure, not factual accuracy.
+[Ask Siggo](assistant.md) calls Groq once per authenticated question with a bounded projection of the durable catalog and recent chat text. General chat uses keyword selection; **Ask about this** uses exactly one validated current public record. Invalid, ended, or personal focus IDs fail before reserving quota. It does not read private workspace content, collect sources, browse links, or mutate user-edited fields. Structured answers use server-owned catalog links; unsupported citations and invalid output are rejected. This constrains links and structure, not factual accuracy.
 
 Per-user request reservations use a conditional Postgres upsert and server-owned `assistantUsage` JSONB, without schema changes or another service. This operational field never reaches workspace responses and survives content writes through the existing unknown-field preservation. Chat text is not persisted. Provider credentials and error payloads stay server-side; replies are private and uncached.
 
@@ -80,24 +86,25 @@ Implementation and integration tests are the authority for these boundaries. [De
 
 ## Module map
 
-| Responsibility                                          | Entry point                                                                                          |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Routes, authenticated page boundary, and API handlers   | [`src/app/`](../src/app/)                                                                            |
-| Catalog, profile, date, and workspace schemas           | [`src/lib/model.ts`](../src/lib/model.ts)                                                            |
-| Catalog-grounded chat and provider limits               | [`assistant-server.ts`](../src/lib/assistant-server.ts), [`assistant.ts`](../src/lib/assistant.ts)   |
-| Explainable relevance ranking                           | [`src/lib/ranking.ts`](../src/lib/ranking.ts)                                                        |
-| Discovery, reminders, and personal-listing behavior     | [`src/lib/workspace.ts`](../src/lib/workspace.ts)                                                    |
-| Browser persistence, write queue, and synchronization   | [`src/lib/workspace-store.ts`](../src/lib/workspace-store.ts)                                        |
-| Saved history and deadline-change reconciliation        | [`src/lib/saved-competitions.ts`](../src/lib/saved-competitions.ts)                                  |
-| Public collection, parsing, and failure recovery        | [`src/lib/sources/`](../src/lib/sources/)                                                            |
-| Resumable Codabench phase checks                        | [`src/lib/sources/codabench.ts`](../src/lib/sources/codabench.ts)                                    |
-| Indirect TensorHack/calendar collection                 | [`src/lib/sources/devpost.ts`](../src/lib/sources/devpost.ts)                                        |
-| Zindi collection and isolated browser lifetime          | [`zindi.ts`](../src/lib/sources/zindi.ts), [`zindi-browser.ts`](../src/lib/sources/zindi-browser.ts) |
-| Catalog caching, durable storage, and workspace updates | [`src/lib/server.ts`](../src/lib/server.ts)                                                          |
-| Authentication and request validation                   | [`auth.ts`](../src/lib/auth.ts), [`request-security.ts`](../src/lib/request-security.ts)             |
-| Database connection and schema                          | [`src/db/`](../src/db/)                                                                              |
-| Directory, dialogs, and UI primitives                   | [`src/components/`](../src/components/)                                                              |
-| Unit, server, security, and browser coverage            | [`tests/`](../tests/)                                                                                |
+| Responsibility                                          | Entry point                                                                                                                |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Routes, authenticated page boundary, and API handlers   | [`src/app/`](../src/app/)                                                                                                  |
+| Catalog, profile, date, and workspace schemas           | [`src/lib/model.ts`](../src/lib/model.ts)                                                                                  |
+| Comparison and private preparation plans                | [`comparison.tsx`](../src/components/comparison.tsx), [`participation-plan.tsx`](../src/components/participation-plan.tsx) |
+| Catalog-grounded chat and provider limits               | [`assistant-server.ts`](../src/lib/assistant-server.ts), [`assistant.ts`](../src/lib/assistant.ts)                         |
+| Explainable relevance ranking                           | [`src/lib/ranking.ts`](../src/lib/ranking.ts)                                                                              |
+| Discovery, reminders, and personal-listing behavior     | [`src/lib/workspace.ts`](../src/lib/workspace.ts)                                                                          |
+| Browser persistence, write queue, and synchronization   | [`src/lib/workspace-store.ts`](../src/lib/workspace-store.ts)                                                              |
+| Saved history and deadline-change reconciliation        | [`src/lib/saved-competitions.ts`](../src/lib/saved-competitions.ts)                                                        |
+| Public collection, parsing, and failure recovery        | [`src/lib/sources/`](../src/lib/sources/)                                                                                  |
+| Resumable Codabench phase checks                        | [`src/lib/sources/codabench.ts`](../src/lib/sources/codabench.ts)                                                          |
+| Indirect TensorHack/calendar collection                 | [`src/lib/sources/devpost.ts`](../src/lib/sources/devpost.ts)                                                              |
+| Zindi collection and isolated browser lifetime          | [`zindi.ts`](../src/lib/sources/zindi.ts), [`zindi-browser.ts`](../src/lib/sources/zindi-browser.ts)                       |
+| Catalog caching, durable storage, and workspace updates | [`src/lib/server.ts`](../src/lib/server.ts)                                                                                |
+| Authentication and request validation                   | [`auth.ts`](../src/lib/auth.ts), [`request-security.ts`](../src/lib/request-security.ts)                                   |
+| Database connection and schema                          | [`src/db/`](../src/db/)                                                                                                    |
+| Directory, dialogs, and UI primitives                   | [`src/components/`](../src/components/)                                                                                    |
+| Unit, server, security, and browser coverage            | [`tests/`](../tests/)                                                                                                      |
 
 ## Compatibility
 

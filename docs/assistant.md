@@ -9,6 +9,7 @@ Ask Siggo is an **optional, read-only catalog assistant** using GroqCloud. Open 
 The server reads the existing durable catalog, selects at most eight non-ended public-source listings using keyword matching across recent questions, then asks Groq's `openai/gpt-oss-120b` model for a concise answer. This is Groq-hosted inference, not the paid OpenAI API.
 
 - The selection is capped at 10,000 serialized record characters. Long descriptions and rewards are shortened for context.
+- **Ask about this** in a listing's details or comparison locks the context to that one current public catalog record. The client sends its ID, not a copy of listing facts. The server rejects personal, ended, or missing IDs before reserving app quota; there is no silent keyword fallback. Saved-only or archived copies are not uploaded. Opening a different listing or choosing **New general chat** starts a fresh conversation without making an API call.
 - Recent questions help select records for follow-ups. This is keyword retrieval, not semantic search or an exhaustive catalog query. Event titles, topics, and source names work best; unrelated wording or another language can miss relevant listings.
 - Each reply reports its selection size and catalog snapshot time. A snapshot time does not prove every source was verified then.
 - Source links come from the server's selected catalog records, never model-invented destinations. Indirect metadata keeps its provider credit and listing link.
@@ -19,11 +20,11 @@ No source requests, including Devpost requests, are introduced by chat. An unava
 
 ## Privacy
 
-The browser sends only your current question and up to two recent question/reply pairs to Siggo's authenticated endpoint. The server adds a small, explicit projection of catalog facts. No account identity, notes, saved/dismissed lists, personal listings, preferences, images, or internal collector progress is included automatically.
+The browser sends only your current question, up to two recent question/reply pairs, and an optional selected public listing ID to Siggo's authenticated endpoint. The server adds a small, explicit projection of catalog facts. No account identity, notes, participation plans or tasks, saved/dismissed lists, personal listings, preferences, images, or internal collector progress is included automatically.
 
 **Anything you type into chat is sent to Groq**, including personal information you choose to put in the question. Avoid secrets or sensitive information. Catalog text and conversation history are treated as untrusted data, not instructions to gain privileges.
 
-Chat history lives only in the current page's memory: at most six turns are displayed, and **Clear chat** or a reload removes them. Closing/reopening the dialog preserves this in-memory history. There is no durable chat history, browser-storage copy, analytics integration, or shared response cache. User questions and provider errors are not logged by this feature.
+Chat history lives only in the current page's memory: at most six turns are displayed, and **Clear chat** or a reload removes them. Closing/reopening the same chat scope preserves this in-memory history; switching listing scope clears it. There is no durable chat history, browser-storage copy, analytics integration, or shared response cache. User questions and provider errors are not logged by this feature.
 
 Groq's [Services Agreement](https://console.groq.com/docs/legal/services-agreement) prohibits training on inputs/outputs without customer permission. Its [data documentation](https://console.groq.com/docs/your-data) describes temporary reliability/abuse retention and legal exceptions. Enable **Zero Data Retention** in your account and confirm it is available and enabled. Groq processes remotely; this does not run on your DGX Spark or guarantee Singapore-only processing. See the [provider research](research/ai-api-options.md).
 
@@ -49,6 +50,6 @@ Siggo cannot determine your billing plan from the API key. Remaining on Groq Fre
 
 ## Development and verification
 
-`tests/unit/assistant*.test.ts` covers request validation, context minimization, citation checks, provider failures, authentication, origins, snapshot-only reads, and atomic quota SQL. `tests/e2e/assistant.spec.ts` covers desktop/mobile accessibility, sources, private-data exclusion, cancellation, ephemeral history, quota errors, and the real unauthenticated API gate.
+`tests/unit/assistant*.test.ts` covers request validation, focused-ID checks before quota, context minimization, citation checks, provider failures, authentication, origins, snapshot-only reads, and atomic quota SQL. `tests/e2e/assistant.spec.ts` covers desktop/mobile accessibility, sources, private-data exclusion, cancellation, ephemeral history, quota errors, and the real unauthenticated API gate.
 
 Tests use mocked Groq responses and fictional catalog data. Playwright clears `GROQ_API_KEY`; its local fixture UI does not bypass the endpoint's sign-in requirement. Live model access, Free-plan settings, Zero Data Retention, and a real answer require separate owner-account verification after setup.

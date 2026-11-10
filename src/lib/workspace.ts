@@ -1,12 +1,17 @@
 import {
   type Competition,
+  type ParticipationPlan,
   type Workspace,
   canonicalUrl,
   deadlineTime,
   isActive,
   isDateOnly,
 } from "./model";
-import { competitionLibrary, reconcileSavedCompetitions } from "./saved-competitions";
+import {
+  competitionLibrary,
+  reconcileSavedCompetitions,
+  toggleSavedCompetition,
+} from "./saved-competitions";
 
 export function workspaceCompetitions(catalog: Competition[], workspace: Workspace, now: number) {
   const currentUrls = new Set(catalog.map((item) => canonicalUrl(item.url)));
@@ -56,9 +61,29 @@ export function deadlineReminders(items: Competition[], saved: string[], now: nu
     .sort((a, b) => deadlineTime(a.value) - deadlineTime(b.value));
 }
 
+// Plans are private content, like notes. Unsaving retains them; deleting a personal listing removes them.
+export function withParticipationPlan(
+  workspace: Workspace,
+  id: string,
+  plan: ParticipationPlan | null,
+  item?: Competition,
+): Workspace {
+  const participationPlans = { ...workspace.participationPlans, ...(plan ? { [id]: plan } : {}) };
+  if (!plan) delete participationPlans[id];
+  const next = { ...workspace, participationPlans };
+  return plan &&
+    !Object.hasOwn(workspace.participationPlans, id) &&
+    item &&
+    !workspace.saved.includes(id)
+    ? toggleSavedCompetition(next, item)
+    : next;
+}
+
 export function withoutManualCompetition(workspace: Workspace, id: string): Workspace {
   const notes = { ...workspace.notes };
   delete notes[id];
+  const participationPlans = { ...workspace.participationPlans };
+  delete participationPlans[id];
   return reconcileSavedCompetitions(
     {
       ...workspace,
@@ -66,6 +91,7 @@ export function withoutManualCompetition(workspace: Workspace, id: string): Work
       saved: workspace.saved.filter((value) => value !== id),
       dismissed: workspace.dismissed.filter((value) => value !== id),
       notes,
+      participationPlans,
     },
     [],
   );

@@ -89,7 +89,7 @@ On Linux, use `npx playwright install --with-deps chromium` if browser system de
 
 `SIGNAL_E2E=1` is a local test switch, not an authentication bypass. It cannot enable test data or local preview in production or on Vercel. The generated `tests/fixtures/catalog.json`, reports, and screenshots are git-ignored; fixture records are never live fallbacks. Server-side collector tests run once on desktop, with their duplicate mobile cases intentionally skipped.
 
-The suite covers discovery, filtering, ranking behavior, date precision, saved history, deadline updates, private listings, persistence, security boundaries, and WCAG AA checks. Browser failures retain traces and screenshots in `test-results/`.
+The suite covers discovery, filtering, ranking behavior, date precision, saved history, deadline updates, comparison, private participation plans, focused chat, private listings, persistence, security boundaries, and WCAG AA checks. Browser failures retain traces and screenshots in `test-results/`.
 
 ## Working on sources
 

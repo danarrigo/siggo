@@ -55,6 +55,19 @@ export async function assistantText(body: ReadableStream<Uint8Array> | null, lim
   }
 }
 
+export function assistantFocus(catalog: Catalog, competitionId: string | undefined) {
+  if (competitionId === undefined) return undefined;
+  const item = catalog.competitions.find(
+    (item) => item.id === competitionId && item.source !== "manual" && isActive(item),
+  );
+  if (!item)
+    throw new AssistantError(
+      "This listing is not available to Ask Siggo. Use a current public listing or start a general chat.",
+      404,
+    );
+  return item;
+}
+
 function contextFor(input: AssistantRequest, catalog: Catalog, now: number) {
   const candidates = catalog.competitions.filter(
     (item) => item.source !== "manual" && isActive(item, now),
@@ -108,7 +121,9 @@ function contextFor(input: AssistantRequest, catalog: Catalog, now: number) {
       0,
     );
   }
+  const focus = assistantFocus(catalog, input.competitionId);
   const ordered = searchable
+    .filter((entry) => !focus || entry.item.id === focus.id)
     .map((entry) => ({ item: entry.item, score: score(entry) }))
     .sort(
       (a, b) =>
@@ -157,8 +172,9 @@ function contextFor(input: AssistantRequest, catalog: Catalog, now: number) {
       todayUtc: new Date(now).toISOString().slice(0, 10),
       catalogUpdatedAt: catalog.updatedAt,
       catalogCount: candidates.length,
-      selectionMethod:
-        "Keyword matching across recent questions, then nearest listed date; at most eight records, not exhaustive or a personalized eligibility assessment.",
+      selectionMethod: focus
+        ? "Explicitly focused on this one current public catalog listing. No saved snapshots or private workspace content is included. Do not answer about other listings."
+        : "Keyword matching across recent questions, then nearest listed date; at most eight records, not exhaustive or a personalized eligibility assessment.",
       sources: catalog.sources
         .filter((source) => sourceIds.has(source.id))
         .map((source) => ({

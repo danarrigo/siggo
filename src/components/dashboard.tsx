@@ -28,6 +28,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   type Catalog,
+  type Competition,
+  type ParticipationPlan,
+  participationStages,
   type ManualCompetition,
   type Workspace,
   canonicalUrl,
@@ -48,11 +51,13 @@ import {
   deadlineReminders,
   isNewCompetition,
   withoutManualCompetition,
+  withParticipationPlan,
   workspaceCompetitions,
 } from "@/lib/workspace";
 import { competitionLibrary, toggleSavedCompetition } from "@/lib/saved-competitions";
 import { UnavailableSavedCompetition } from "./unavailable-saved-competition";
-import { AskSiggo } from "./ask-siggo";
+import { AskSiggo, type AssistantFocus } from "./ask-siggo";
+import { ComparisonBar, ComparisonDialog, comparisonLimit } from "./comparison";
 
 const authClient = createAuthClient();
 type View = "For you" | "All competitions" | "Saved" | "New";
@@ -106,6 +111,12 @@ export function Dashboard({
   const [sort, setSort] = useState("relevance");
   const [limit, setLimit] = useState(18);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantSession, setAssistantSession] = useState<{ key: number; focus?: AssistantFocus }>(
+    { key: 0 },
+  );
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [progressFilter, setProgressFilter] = useState("all");
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -114,6 +125,9 @@ export function Dashboard({
   const [syncMessage, setSyncMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const assistantTriggerRef = useRef<HTMLButtonElement>(null);
+  const compareTriggerRef = useRef<HTMLButtonElement>(null);
+  const comparisonReturnFocusRef = useRef<HTMLElement | null>(null);
   const library = useMemo(
     () => competitionLibrary(catalog.competitions, workspace, now),
     [catalog.competitions, workspace, now],
@@ -139,6 +153,20 @@ export function Dashboard({
         Date.parse(current.lastSeenAt) < Date.parse(item.lastSeenAt))
     );
   };
+  const publicIds = new Set(
+    catalog.competitions.filter((item) => item.source !== "manual").map((item) => item.id),
+  );
+  const canAsk = (item: Competition) =>
+    publicIds.has(item.id) && item.id.length <= 250 && !snapshotOnly(item) && isActive(item, now);
+  const comparisonItems = comparisonIds.flatMap((id) => {
+    const item = library.find((item) => item.id === id);
+    return item ? [item] : [];
+  });
+  const matchesProgress = (id: string) =>
+    progressFilter === "all" ||
+    (progressFilter === "untracked"
+      ? !Object.hasOwn(workspace.participationPlans, id)
+      : workspace.participationPlans[id]?.stage === progressFilter);
   const newCount = items.filter((item) => isNewCompetition(item, since, now)).length;
   const ranked = useMemo(
     () => library.map((item) => ({ item, rank: rankCompetition(item, workspace, items, now) })),
@@ -148,7 +176,11 @@ export function Dashboard({
     .filter(({ item }) => {
       const active = isActive(item, now);
       if (view === "Saved") {
-        if (!workspace.saved.includes(item.id) || active === (savedView === "archive"))
+        if (
+          !workspace.saved.includes(item.id) ||
+          active === (savedView === "archive") ||
+          !matchesProgress(item.id)
+        )
           return false;
       } else if (!discoverableIds.has(item.id)) return false;
       if (view === "New" && !isNewCompetition(item, since, now)) return false;
@@ -185,10 +217,46 @@ export function Dashboard({
       ? unavailableIds.filter(
           (id) =>
             (source === "all" || id.startsWith(`${source}:`)) &&
+            matchesProgress(id) &&
             `${id} ${workspace.notes[id] ?? ""}`.toLowerCase().includes(query.toLowerCase().trim()),
         )
       : [];
-  const hasFilters = query || category !== "All types" || source !== "all";
+  const hasFilters =
+    query ||
+    category !== "All types" ||
+    source !== "all" ||
+    (view === "Saved" && progressFilter !== "all");
+
+  function openAssistant(item?: Competition) {
+    setAssistantSession((previous) =>
+      previous.focus?.id === item?.id
+        ? previous
+        : { key: previous.key + 1, focus: item ? { id: item.id, title: item.title } : undefined },
+    );
+    setSelectedId(null);
+    setComparisonOpen(false);
+    setAssistantOpen(true);
+  }
+  function toggleComparison(id: string) {
+    const next = comparisonIds.includes(id)
+      ? comparisonIds.filter((other) => other !== id)
+      : [...comparisonIds, id];
+    if (next.length > comparisonLimit) return;
+    // Choose the fallback before React disables the comparison trigger during unmount.
+    if (next.length < 2) comparisonReturnFocusRef.current = assistantTriggerRef.current;
+    setComparisonIds(next);
+    if (next.length < 2) setComparisonOpen(false);
+  }
+  function savePlan(id: string, plan: ParticipationPlan | null) {
+    return persist((previous) =>
+      withParticipationPlan(
+        previous,
+        id,
+        plan,
+        library.find((item) => item.id === id),
+      ),
+    );
+  }
 
   function changeView(next: View) {
     setView(next);
@@ -276,6 +344,7 @@ export function Dashboard({
     setQuery("");
     setCategory("All types");
     setSource("all");
+    setProgressFilter("all");
     setLimit(18);
   }
 
@@ -355,7 +424,7 @@ export function Dashboard({
             </div>
             <p className="directory-intro">
               {view === "Saved" && savedView === "archive"
-                ? "Ended saved competitions, with your notes kept."
+                ? "Ended saved competitions, with your notes and plans kept."
                 : "Active and upcoming, across your connected sources."}
             </p>
           </div>
@@ -373,15 +442,34 @@ export function Dashboard({
               </button>
             </div>
             <button
+              ref={assistantTriggerRef}
               className="assistant-trigger"
               aria-label="Ask Siggo"
-              onClick={() => setAssistantOpen(true)}
+              onClick={() => openAssistant()}
             >
               <MessageCircle size={16} />
               <span>Ask Siggo</span>
             </button>
           </div>
         </section>
+        {comparisonIds.length > 0 && (
+          <ComparisonBar
+            entries={comparisonIds.map((id) => ({
+              id,
+              title: library.find((item) => item.id === id)?.title ?? "Listing unavailable",
+            }))}
+            onRemove={toggleComparison}
+            onClear={() => {
+              setComparisonIds([]);
+              setComparisonOpen(false);
+            }}
+            onCompare={() => {
+              comparisonReturnFocusRef.current = compareTriggerRef.current;
+              setComparisonOpen(true);
+            }}
+            compareRef={compareTriggerRef}
+          />
+        )}
         <section className="discovery-panel" aria-label="Competition discovery">
           <div className="view-row">
             <nav className="view-tabs" aria-label="Catalog view">
@@ -416,8 +504,9 @@ export function Dashboard({
           )}
           {workspace.trackingLimited && (
             <p className="tracking-warning" role="alert">
-              Saved-list tracking has reached the workspace limit. Remove saved entries or shorten
-              notes to resume it. Existing details and notes are kept.
+              Saved-list tracking has reached the workspace limit. Remove saved entries, shorten
+              notes or tasks, or remove an unused plan to resume it. Existing private content is
+              kept.
             </p>
           )}
           {view === "Saved" && (
@@ -438,10 +527,29 @@ export function Dashboard({
               ))}
               <p>
                 {savedView === "archive"
-                  ? "Ended listings stay here with their notes."
+                  ? "Ended listings stay here with notes and plans."
                   : "A missing listing is not assumed ended."}
               </p>
             </div>
+          )}
+          {view === "Saved" && (
+            <label className="progress-filter">
+              Participation progress
+              <select
+                aria-label="Filter saved by progress"
+                value={progressFilter}
+                onChange={(event) => {
+                  setProgressFilter(event.target.value);
+                  setLimit(18);
+                }}
+              >
+                <option value="all">All progress</option>
+                <option value="untracked">Not tracking</option>
+                {participationStages.map((stage) => (
+                  <option key={stage}>{stage}</option>
+                ))}
+              </select>
+            </label>
           )}
           <div className="filter-toolbar">
             <div className="search-row">
@@ -555,6 +663,12 @@ export function Dashboard({
                 isNew={isNewCompetition(item, since, now)}
                 hasNote={Boolean(workspace.notes[item.id])}
                 snapshot={snapshotOnly(item)}
+                plan={workspace.participationPlans[item.id]}
+                compared={comparisonIds.includes(item.id)}
+                compareDisabled={
+                  !comparisonIds.includes(item.id) && comparisonIds.length >= comparisonLimit
+                }
+                onCompare={() => toggleComparison(item.id)}
                 onSave={() => toggleSaved(item.id)}
                 onDismiss={() => toggleDismissed(item.id)}
                 onOpen={() => setSelectedId(item.id)}
@@ -566,6 +680,8 @@ export function Dashboard({
               key={id}
               id={id}
               note={workspace.notes[id] ?? ""}
+              plan={workspace.participationPlans[id]}
+              onSavePlan={(plan) => savePlan(id, plan)}
               onSaveNote={(note) => saveNote(id, note)}
               onUnsave={() =>
                 persist((previous) => ({
@@ -661,7 +777,27 @@ export function Dashboard({
           </button>
         </div>
       )}
-      <AskSiggo open={assistantOpen} onOpenChange={setAssistantOpen} enabled={assistantEnabled} />
+      <AskSiggo
+        key={assistantSession.key}
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        enabled={assistantEnabled}
+        focus={assistantSession.focus}
+        onGeneralChat={() => openAssistant()}
+        returnFocus={assistantTriggerRef}
+      />
+      {comparisonOpen && (
+        <ComparisonDialog
+          items={comparisonItems}
+          snapshotIds={new Set(comparisonItems.filter(snapshotOnly).map((item) => item.id))}
+          now={now}
+          onRemove={toggleComparison}
+          onClose={() => setComparisonOpen(false)}
+          onAsk={openAssistant}
+          canAsk={canAsk}
+          returnFocus={() => comparisonReturnFocusRef.current}
+        />
+      )}
       {preferencesOpen && (
         <PreferencesDialog
           open
@@ -682,6 +818,14 @@ export function Dashboard({
           note={workspace.notes[selected.item.id] ?? ""}
           snapshot={snapshotOnly(selected.item)}
           archived={!isActive(selected.item, now)}
+          plan={workspace.participationPlans[selected.item.id]}
+          onSavePlan={(plan) => savePlan(selected.item.id, plan)}
+          compared={comparisonIds.includes(selected.item.id)}
+          compareDisabled={
+            !comparisonIds.includes(selected.item.id) && comparisonIds.length >= comparisonLimit
+          }
+          onCompare={() => toggleComparison(selected.item.id)}
+          onAsk={canAsk(selected.item) ? () => openAssistant(selected.item) : undefined}
           onSave={() => toggleSaved(selected.item.id)}
           onSaveNote={(note) => saveNote(selected.item.id, note)}
           onEdit={

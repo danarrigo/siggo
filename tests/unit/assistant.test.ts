@@ -89,6 +89,12 @@ describe("catalog-grounded Groq answers", () => {
   it("minimizes context and excludes manual listings, ended records, images, crawl state, and private fields", async () => {
     const privateCatalog = Object.assign(structuredClone(catalog), {
       privateNotes: "private-note-canary",
+      participationPlans: {
+        [item.id]: {
+          stage: "Preparing",
+          tasks: [{ id: "private-task", text: "private-plan-canary", done: false }],
+        },
+      },
       profile: "private-profile-canary",
       codabench: {
         checks: { "999": { attemptedAt: null, verifiedAt: null, active: null } },
@@ -110,6 +116,7 @@ describe("catalog-grounded Groq answers", () => {
     const text = JSON.stringify(sentBody());
     for (const value of [
       "private-note-canary",
+      "private-plan-canary",
       "private-profile-canary",
       "private-manual-canary",
       "ended-record-canary",
@@ -157,6 +164,32 @@ describe("catalog-grounded Groq answers", () => {
     expect(body.messages[0].content).toContain("untrusted");
     expect(body.messages[0].content).toContain("timezone");
     expect(body.messages[0].content).toContain("not all matching events");
+  });
+  it("focuses on exactly one server-owned record even when the question matches other listings", async () => {
+    const other = { ...item, id: "evalai:other", title: "Other finance listing" };
+    await askSiggo(
+      { ...input(), competitionId: item.id },
+      { ...catalog, competitions: [other, item] },
+    );
+    const body = sentBody();
+    const data = JSON.parse(body.messages[1].content.split("\n").slice(1).join("\n"));
+    expect(data.records).toHaveLength(1);
+    expect(data.records[0].title).toBe(item.title);
+    expect(data.catalogCount).toBe(2);
+    expect(data.selectionMethod).toContain("Explicitly focused");
+    expect(JSON.stringify(data)).not.toContain(other.title);
+  });
+  it("rejects missing, ended, and personal focus IDs without a provider call", async () => {
+    const privateItem: Competition = { ...item, id: "manual:private", source: "manual" };
+    const ended = { ...item, id: "evalai:ended", submissionEndsAt: "2000-01-01" };
+    for (const competitionId of ["evalai:missing", privateItem.id, ended.id])
+      await expect(
+        askSiggo(
+          { ...input(), competitionId },
+          { ...catalog, competitions: [item, privateItem, ended] },
+        ),
+      ).rejects.toMatchObject({ status: 404 });
+    expect(fetch).not.toHaveBeenCalled();
   });
   it("keeps recent user questions useful for short follow-ups without trusting prior replies as facts", async () => {
     await askSiggo(

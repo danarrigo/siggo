@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { ParticipationPlan } from "@/lib/model";
+import { ParticipationPlanEditor } from "./participation-plan";
 import {
   Dialog,
   DialogContent,
@@ -15,19 +17,35 @@ import {
 export function UnavailableSavedCompetition({
   id,
   note,
+  plan,
+  onSavePlan,
   onSaveNote,
   onUnsave,
 }: {
   id: string;
   note: string;
+  plan?: ParticipationPlan;
+  onSavePlan: (plan: ParticipationPlan | null) => boolean;
   onSaveNote: (note: string) => boolean;
   onUnsave: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(note);
+  const [taskDirty, setTaskDirty] = useState(false);
+  function canLeave() {
+    return (
+      (draft === note && !taskDirty) ||
+      window.confirm(
+        draft !== note
+          ? taskDirty
+            ? "Discard the unsaved note changes and unadded task?"
+            : "Discard the unsaved changes to your note?"
+          : "Discard the task you haven't added?",
+      )
+    );
+  }
   function close() {
-    if (draft !== note && !window.confirm("Discard the unsaved changes to your note?")) return;
-    setOpen(false);
+    if (canLeave()) setOpen(false);
   }
   return (
     <>
@@ -43,10 +61,11 @@ export function UnavailableSavedCompetition({
           variant="outline"
           onClick={() => {
             setDraft(note);
+            setTaskDirty(false);
             setOpen(true);
           }}
         >
-          View note
+          {plan ? "View note and plan" : "View note"}
         </Button>
       </article>
       {open && (
@@ -63,6 +82,11 @@ export function UnavailableSavedCompetition({
                 {id}. Missing source details do not confirm that this competition ended.
               </DialogDescription>
             </DialogHeader>
+            <ParticipationPlanEditor
+              plan={plan}
+              onChange={onSavePlan}
+              onDraftChange={setTaskDirty}
+            />
             <section className="personal-note">
               <form
                 onSubmit={(event) => {
@@ -89,9 +113,7 @@ export function UnavailableSavedCompetition({
             <Button
               variant="outline"
               onClick={() => {
-                if (draft !== note && !window.confirm("Discard the unsaved changes to your note?"))
-                  return;
-                onUnsave();
+                if (canLeave()) onUnsave();
               }}
             >
               Unsave listing

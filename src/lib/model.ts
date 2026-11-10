@@ -160,6 +160,26 @@ export const defaultProfile: Profile = {
   fundedFinals: true,
   team: "Both",
 };
+export const participationStages = ["Interested", "Preparing", "Submitted"] as const;
+export const maxParticipationTasks = 20;
+export const participationPlanSchema = z.object({
+  stage: z.enum(participationStages),
+  tasks: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(80),
+        text: z.string().trim().min(1).max(200),
+        done: z.boolean(),
+      }),
+    )
+    .max(maxParticipationTasks)
+    .refine(
+      (tasks) => new Set(tasks.map((task) => task.id)).size === tasks.length,
+      "Task IDs must be unique",
+    ),
+});
+export type ParticipationPlan = z.infer<typeof participationPlanSchema>;
+
 export const workspaceSchema = z
   .object({
     profile: profileSchema,
@@ -170,6 +190,10 @@ export const workspaceSchema = z
       .refine((notes) => Object.keys(notes).length <= 200)
       .default({}),
     manualCompetitions: z.array(manualCompetitionSchema).max(100).default([]),
+    participationPlans: z
+      .record(z.string().min(1).max(250), participationPlanSchema)
+      .refine((plans) => Object.keys(plans).length <= 200)
+      .default({}),
     lastVisitedAt: z.iso.datetime({ offset: true }).nullable().default(null),
     savedSnapshots: z
       .record(z.string().min(1).max(250), competitionSchema)

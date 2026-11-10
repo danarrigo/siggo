@@ -196,6 +196,27 @@ it("never exposes or resets operational AI counters, including a racing request 
   expect(predicates).toHaveLength(2);
 });
 
+it("preserves participation plans across legacy writes and saves explicit plan edits without altering managed AI quotas", async () => {
+  const plan = {
+    stage: "Preparing",
+    tasks: [{ id: "task-1", text: "Private preparation", done: false }],
+  } satisfies import("../../src/lib/model").ParticipationPlan;
+  row = Object.assign(
+    { ...baseline(), participationPlans: { [item.id]: plan } },
+    { assistantUsage: { count: 3 } },
+  );
+  await saveWorkspace("owner", defaultWorkspace, ["profile"]);
+  expect(row?.participationPlans[item.id]).toEqual(plan);
+  await saveWorkspace(
+    "owner",
+    { ...defaultWorkspace, participationPlans: { [item.id]: { ...plan, stage: "Submitted" } } },
+    ["participationPlans"],
+  );
+  expect(row?.participationPlans[item.id].stage).toBe("Submitted");
+  expect(row).toHaveProperty("assistantUsage.count", 3);
+  expect(row?.notes[item.id]).toBe("Keep this note");
+});
+
 it("legacy clients only edit fields explicitly supplied", async () => {
   await saveWorkspace(
     "owner",

@@ -1,7 +1,8 @@
 "use client";
 
 import "./ask-siggo.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import type { Competition } from "@/lib/model";
 import { ArrowUpRight, Loader2, MessageCircle, Send, Square, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -15,6 +16,7 @@ import {
 } from "@/lib/assistant";
 import { formatDate } from "@/lib/ranking";
 
+export type AssistantFocus = Pick<Competition, "id" | "title">;
 class ChatError extends Error {}
 type Turn = { question: string; reply: AssistantReply };
 const prompts = [
@@ -27,13 +29,21 @@ export function AskSiggo({
   open,
   onOpenChange,
   enabled,
+  focus,
+  onGeneralChat,
+  returnFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   enabled: boolean;
+  focus?: AssistantFocus;
+  onGeneralChat: () => void;
+  returnFocus: RefObject<HTMLButtonElement | null>;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(
+    focus ? "Which dates and entry requirements should I check before entering?" : "",
+  );
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
@@ -77,7 +87,7 @@ export function AskSiggo({
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         signal: active.signal,
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, ...(focus ? { competitionId: focus.id } : {}) }),
       });
       const json: unknown = await response.json();
       if (!response.ok) {
@@ -118,7 +128,7 @@ export function AskSiggo({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="assistant-dialog">
+      <DialogContent className="assistant-dialog" finalFocus={returnFocus}>
         <DialogHeader className="assistant-heading">
           <div className="assistant-eyebrow">
             <MessageCircle size={14} /> Catalog assistant <span>Read only</span>
@@ -132,8 +142,8 @@ export function AskSiggo({
         </DialogHeader>
         <p className="assistant-privacy">
           Your question, recent chat, and selected catalog facts go to Groq. Notes, saved lists,
-          personal listings, and preferences are not included. Chat stays in this tab until you
-          clear it or reload. Avoid sensitive information.{" "}
+          personal listings, preferences, and participation plans are not included. Chat stays in
+          this tab until you clear it or reload. Avoid sensitive information.{" "}
           <a
             href="https://console.groq.com/docs/your-data"
             target="_blank"
@@ -142,6 +152,21 @@ export function AskSiggo({
             Groq privacy <ArrowUpRight size={11} />
           </a>
         </p>
+        {focus && (
+          <div className="assistant-focus">
+            <div>
+              <span>About this listing</span>
+              <strong>{focus.title}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={onGeneralChat}
+              title="Start a general chat and clear this conversation"
+            >
+              New general chat
+            </button>
+          </div>
+        )}
         {!enabled && (
           <p className="assistant-setup" role="status">
             Ask Siggo is not configured. Add the server-only GROQ_API_KEY and sign in to use it. The
@@ -159,10 +184,21 @@ export function AskSiggo({
         >
           {!turns.length && !pending && (
             <div className="assistant-empty">
-              <h3>A little less searching.</h3>
-              <p>Start with a topic, an event title, or a date you want to understand.</p>
+              <h3>{focus ? "A closer look." : "A little less searching."}</h3>
+              <p>
+                {focus
+                  ? "Answers use only this listing's current public catalog facts, not private notes or a saved copy."
+                  : "Start with a topic, an event title, or a date you want to understand."}
+              </p>
               <div className="assistant-prompts">
-                {prompts.map((prompt) => (
+                {(focus
+                  ? [
+                      "Which dates are known?",
+                      "What eligibility and fees still need verification?",
+                      "Summarize this opportunity and what to check.",
+                    ]
+                  : prompts
+                ).map((prompt) => (
                   <button
                     key={prompt}
                     disabled={!enabled}

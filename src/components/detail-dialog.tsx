@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, Bookmark, CheckCircle2, Info, ShieldQuestion } from "lucide-react";
+import {
+  ArrowUpRight,
+  Bookmark,
+  CheckCircle2,
+  Columns2,
+  Info,
+  MessageCircle,
+  ShieldQuestion,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +18,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { canonicalUrl, type Competition, type Profile } from "@/lib/model";
+import { canonicalUrl, type Competition, type ParticipationPlan, type Profile } from "@/lib/model";
 import { formatDate } from "@/lib/ranking";
 import type { Ranked } from "./competition-card";
 import { CompetitionCover } from "./competition-cover";
+import { ParticipationPlanEditor } from "./participation-plan";
 
 export function DetailDialog({
   item,
@@ -23,6 +32,12 @@ export function DetailDialog({
   note,
   snapshot = false,
   archived = false,
+  plan,
+  compared,
+  compareDisabled,
+  onCompare,
+  onAsk,
+  onSavePlan,
   onSave,
   onSaveNote,
   onEdit,
@@ -35,15 +50,31 @@ export function DetailDialog({
   note: string;
   snapshot?: boolean;
   archived?: boolean;
+  plan?: ParticipationPlan;
+  compared: boolean;
+  compareDisabled: boolean;
+  onCompare: () => void;
+  onAsk?: () => void;
+  onSavePlan: (plan: ParticipationPlan | null) => boolean;
   onSave: () => void;
   onSaveNote: (value: string) => boolean;
   onEdit?: () => void;
   onClose: () => void;
 }) {
   const [draftNote, setDraftNote] = useState(note);
+  const [taskDirty, setTaskDirty] = useState(false);
+  function canLeave() {
+    if (draftNote === note && !taskDirty) return true;
+    return window.confirm(
+      draftNote !== note
+        ? taskDirty
+          ? "Discard the unsaved note changes and unadded task?"
+          : "Discard the unsaved changes to your note?"
+        : "Discard the task you haven't added?",
+    );
+  }
   function close() {
-    if (draftNote !== note && !window.confirm("Discard the unsaved changes to your note?")) return;
-    onClose();
+    if (canLeave()) onClose();
   }
   const dates = [
     ["Starts / opens", item.opensAt],
@@ -92,6 +123,33 @@ export function DetailDialog({
           )}
           <DialogDescription>{item.description}</DialogDescription>
         </DialogHeader>
+        <div className="detail-tools">
+          <Button
+            size="sm"
+            variant="outline"
+            aria-pressed={compared}
+            disabled={compareDisabled}
+            onClick={onCompare}
+          >
+            <Columns2 size={14} /> {compared ? "In comparison" : "Compare"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!onAsk}
+            title={
+              !onAsk
+                ? "AI only uses current public catalog listings, not personal or saved-only copies."
+                : undefined
+            }
+            onClick={() => {
+              if (onAsk && canLeave()) onAsk();
+            }}
+          >
+            <MessageCircle size={14} /> Ask about this
+          </Button>
+          {!onAsk && <span>AI uses current public listings only.</span>}
+        </div>
         {(snapshot || archived) && (
           <div className="saved-snapshot-notice">
             <strong>{archived ? "Archived saved listing" : "Saved snapshot"}</strong>
@@ -194,6 +252,7 @@ export function DetailDialog({
             </p>
           </div>
         </div>
+        <ParticipationPlanEditor plan={plan} onChange={onSavePlan} onDraftChange={setTaskDirty} />
         <section className="personal-note">
           <form
             onSubmit={(event) => {
@@ -252,12 +311,7 @@ export function DetailDialog({
             <Button
               variant="outline"
               onClick={() => {
-                if (
-                  draftNote !== note &&
-                  !window.confirm("Discard the unsaved changes to your note?")
-                )
-                  return;
-                onEdit();
+                if (canLeave()) onEdit();
               }}
             >
               Edit listing

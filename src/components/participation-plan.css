@@ -1,0 +1,154 @@
+.participation-plan {
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+}
+.plan-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.plan-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 550;
+}
+.plan-heading > span,
+.plan-privacy {
+  color: var(--quiet);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.plan-privacy {
+  margin: 10px 0 14px;
+}
+.plan-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.plan-stage select,
+.plan-task-form input {
+  padding: 8px 10px;
+  border: 1px solid #cbc8c0;
+  border-radius: 4px;
+  background: white;
+  font-size: 13px;
+  font-weight: 400;
+}
+.plan-tasks {
+  padding: 0;
+  margin: 14px 0;
+  list-style: none;
+}
+.plan-tasks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #eeece6;
+}
+.plan-tasks label {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.plan-tasks input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  accent-color: #a5452e;
+}
+.plan-tasks button {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  color: var(--quiet);
+}
+.task-done {
+  color: var(--quiet);
+  text-decoration: line-through;
+}
+.plan-task-form {
+  margin-top: 14px;
+}
+.plan-task-form > label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.plan-task-form > div {
+  display: flex;
+  gap: 8px;
+}
+.plan-task-form input {
+  flex: 1;
+  min-width: 0;
+}
+.plan-task-form > p,
+.plan-remove-confirm p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.remove-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 14px;
+  color: var(--quiet);
+  font-size: 11px;
+  min-height: 28px;
+}
+.plan-remove-confirm {
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid #dbc9bd;
+  border-radius: 4px;
+}
+.plan-remove-confirm button + button {
+  margin-left: 7px;
+}
+.plan-indicator {
+  padding: 2px 6px;
+  border: 1px solid #d9cfb9;
+  border-radius: 3px;
+  background: #f5efe2;
+  color: #69502d;
+}
+.progress-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 12px;
+  font-size: 12px;
+  color: var(--quiet);
+}
+.progress-filter select {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 9px;
+  background: white;
+  color: var(--foreground);
+}
+@media (max-width: 760px) {
+  .plan-stage select,
+  .plan-task-form input,
+  .progress-filter select {
+    font-size: 16px;
+  }
+}

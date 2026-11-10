@@ -7,6 +7,7 @@ import {
   AssistantError,
   askSiggo,
   assistantConfigured,
+  assistantFocus,
   assistantText,
 } from "@/lib/assistant-server";
 import { sameOrigin } from "@/lib/request-security";
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     if (!parsed.success)
       return failure("Send a question of up to 800 characters with at most two prior turns.", 400);
     const catalog = await loadAssistantCatalog();
+    assistantFocus(catalog, parsed.data.competitionId);
     if (!(await reserveAssistantRequest(user.id)))
       return failure(
         `Ask Siggo allows ${assistantDailyLimit} requests per UTC day, at least ${assistantCooldownSeconds} seconds apart. Try again later.`,

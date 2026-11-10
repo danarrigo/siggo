@@ -1,7 +1,14 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
-import { type Competition, deadlineTime, displayDeadline, endDate, isActive } from "@/lib/model";
+import { Bookmark, Columns2 } from "lucide-react";
+import {
+  type Competition,
+  type ParticipationPlan,
+  deadlineTime,
+  displayDeadline,
+  endDate,
+  isActive,
+} from "@/lib/model";
 import { formatDate, relativeDeadline, type rankCompetition } from "@/lib/ranking";
 import { CompetitionCover } from "./competition-cover";
 
@@ -33,6 +40,10 @@ export function CompetitionCard({
   isNew = false,
   hasNote = false,
   snapshot = false,
+  plan,
+  compared,
+  compareDisabled,
+  onCompare,
   onSave,
   onDismiss,
   onOpen,
@@ -45,6 +56,10 @@ export function CompetitionCard({
   isNew?: boolean;
   hasNote?: boolean;
   snapshot?: boolean;
+  plan?: ParticipationPlan;
+  compared: boolean;
+  compareDisabled: boolean;
+  onCompare: () => void;
   onSave: () => void;
   onDismiss: () => void;
   onOpen: () => void;
@@ -97,6 +112,13 @@ export function CompetitionCard({
           {item.metadataSource && <span>via {item.metadataSource.name}</span>}
           {isNew && <span className="new-listing">New</span>}
           {hasNote && <span className="note-indicator">Has note</span>}
+          {plan && (
+            <span className="plan-indicator" title="Your private participation progress">
+              Plan: {plan.stage}
+              {plan.tasks.length > 0 &&
+                ` · ${plan.tasks.filter((task) => task.done).length}/${plan.tasks.length} tasks`}
+            </span>
+          )}
           {archived && !snapshot && <span className="snapshot-indicator">Archived</span>}
           {snapshot && <span className="snapshot-indicator">Saved snapshot</span>}
           {!archived && closed && <span className="registration-closed">Registration closed</span>}
@@ -124,6 +146,20 @@ export function CompetitionCard({
             onClick={onDismiss}
           >
             {dismissed ? "Undo feedback" : "Less relevant"}
+          </button>
+          <button
+            className="compare-toggle"
+            aria-label={`Compare ${item.title}`}
+            aria-pressed={compared}
+            disabled={compareDisabled}
+            title={
+              compareDisabled
+                ? "Compare up to four listings. Remove one to select another."
+                : undefined
+            }
+            onClick={onCompare}
+          >
+            <Columns2 size={12} /> Compare
           </button>
         </div>
       </div>
