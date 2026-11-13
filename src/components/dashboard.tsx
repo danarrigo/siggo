@@ -23,6 +23,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ import {
 } from "@/lib/model";
 import { formatDate, rankCompetition } from "@/lib/ranking";
 import { CompetitionCard } from "./competition-card";
+import { TopicFilter } from "./topic-filter";
 import { PreferencesDialog } from "./preferences-dialog";
 import { DetailDialog } from "./detail-dialog";
 import { SourceCoverage, sourceState } from "./source-coverage";
@@ -60,7 +62,7 @@ import { AskSiggo, type AssistantFocus } from "./ask-siggo";
 import { ComparisonBar, ComparisonDialog, comparisonLimit } from "./comparison";
 
 const authClient = createAuthClient();
-type View = "For you" | "All competitions" | "Saved" | "New";
+type View = "For you" | "All competitions" | "Saved" | "New" | "Less relevant";
 
 export function Dashboard({
   catalog,
@@ -106,6 +108,7 @@ export function Dashboard({
   const [view, setView] = useState<View>("For you");
   const [savedView, setSavedView] = useState<"active" | "archive">("active");
   const [query, setQuery] = useState("");
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [category, setCategory] = useState("All types");
   const [source, setSource] = useState("all");
   const [sort, setSort] = useState("relevance");
@@ -117,6 +120,12 @@ export function Dashboard({
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [progressFilter, setProgressFilter] = useState("all");
+  const [feedbackAction, setFeedbackAction] = useState<
+    { kind: "dismiss"; item: Competition } | { kind: "reset" } | null
+  >(null);
+  const [feedbackUndo, setFeedbackUndo] = useState<{ id: string; title: string } | null>(null);
+  const undoItem =
+    feedbackUndo && workspace.dismissed.includes(feedbackUndo.id) ? feedbackUndo : null;
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -172,6 +181,12 @@ export function Dashboard({
     () => library.map((item) => ({ item, rank: rankCompetition(item, workspace, items, now) })),
     [library, items, workspace, now],
   );
+  const topics = [...new Set(library.flatMap((item) => item.tags))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  const missingFeedbackIds = workspace.dismissed.filter(
+    (id) => !library.some((item) => item.id === id),
+  );
   const visible = ranked
     .filter(({ item }) => {
       const active = isActive(item, now);
@@ -182,10 +197,14 @@ export function Dashboard({
           !matchesProgress(item.id)
         )
           return false;
+      } else if (view === "Less relevant") {
+        if (!workspace.dismissed.includes(item.id)) return false;
       } else if (!discoverableIds.has(item.id)) return false;
       if (view === "New" && !isNewCompetition(item, since, now)) return false;
       if (category !== "All types" && item.category !== category) return false;
       if (source !== "all" && item.source !== source) return false;
+      if (selectedTopics.length > 0 && !selectedTopics.some((topic) => item.tags.includes(topic)))
+        return false;
       return [item.title, item.description, item.organizer, item.source, ...item.tags]
         .join(" ")
         .toLowerCase()
@@ -213,7 +232,10 @@ export function Dashboard({
     (id) => !library.some((item) => item.id === id),
   );
   const unavailable =
-    view === "Saved" && savedView === "active" && category === "All types"
+    view === "Saved" &&
+    savedView === "active" &&
+    category === "All types" &&
+    selectedTopics.length === 0
       ? unavailableIds.filter(
           (id) =>
             (source === "all" || id.startsWith(`${source}:`)) &&
@@ -225,6 +247,7 @@ export function Dashboard({
     query ||
     category !== "All types" ||
     source !== "all" ||
+    selectedTopics.length > 0 ||
     (view === "Saved" && progressFilter !== "all");
 
   function openAssistant(item?: Competition) {
@@ -276,11 +299,14 @@ export function Dashboard({
     if (item) persist((previous) => toggleSavedCompetition(previous, item));
   }
   function toggleDismissed(id: string) {
-    persist((previous) => ({
+    if (!workspace.dismissed.includes(id)) {
+      const item = library.find((item) => item.id === id);
+      if (item) setFeedbackAction({ kind: "dismiss", item });
+      return;
+    }
+    return persist((previous) => ({
       ...previous,
-      dismissed: previous.dismissed.includes(id)
-        ? previous.dismissed.filter((item) => item !== id)
-        : [...previous.dismissed, id],
+      dismissed: previous.dismissed.filter((item) => item !== id),
     }));
   }
   function saveNote(id: string, note: string) {
@@ -342,6 +368,7 @@ export function Dashboard({
   }
   function clearFilters() {
     setQuery("");
+    setSelectedTopics([]);
     setCategory("All types");
     setSource("all");
     setProgressFilter("all");
@@ -473,18 +500,21 @@ export function Dashboard({
         <section className="discovery-panel" aria-label="Competition discovery">
           <div className="view-row">
             <nav className="view-tabs" aria-label="Catalog view">
-              {(["For you", "All competitions", "Saved", "New"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  aria-current={view === tab ? "page" : undefined}
-                  className={view === tab ? "active" : ""}
-                  onClick={() => changeView(tab)}
-                >
-                  {tab}
-                  {tab === "Saved" && <span>{savedCount}</span>}
-                  {tab === "New" && <span>{newCount}</span>}
-                </button>
-              ))}
+              {(["For you", "All competitions", "Saved", "New", "Less relevant"] as const).map(
+                (tab) => (
+                  <button
+                    key={tab}
+                    aria-current={view === tab ? "page" : undefined}
+                    className={view === tab ? "active" : ""}
+                    onClick={() => changeView(tab)}
+                  >
+                    {tab}
+                    {tab === "Saved" && <span>{savedCount}</span>}
+                    {tab === "New" && <span>{newCount}</span>}
+                    {tab === "Less relevant" && <span>{workspace.dismissed.length}</span>}
+                  </button>
+                ),
+              )}
             </nav>
             <button
               className="refresh-button"
@@ -598,6 +628,15 @@ export function Dashboard({
                   ))}
               </select>
             </label>
+            <TopicFilter
+              topics={topics}
+              selected={selectedTopics}
+              disabled={!ready || topics.length === 0}
+              onChange={(topics) => {
+                setSelectedTopics(topics);
+                setLimit(18);
+              }}
+            />
             <label className="select-filter sort-filter">
               <span className="sr-only">Sort opportunities</span>
               <select
@@ -612,6 +651,23 @@ export function Dashboard({
               </select>
             </label>
           </div>
+          {selectedTopics.length > 0 && (
+            <div className="selected-topics" role="group" aria-label="Selected topics">
+              {selectedTopics.map((topic) => (
+                <button
+                  key={topic}
+                  aria-label={`Remove topic: ${topic}`}
+                  onClick={() => {
+                    setSelectedTopics((previous) => previous.filter((value) => value !== topic));
+                    setLimit(18);
+                  }}
+                >
+                  {topic}
+                  <X size={12} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="results-heading">
             <div className="category-filters" aria-label="Competition type">
               {["All types", ...categories].map((type) => (
@@ -645,6 +701,19 @@ export function Dashboard({
                   : "competitions"}
             </p>
           </div>
+          {hasFilters && (
+            <div className="active-filters">
+              <button onClick={clearFilters}>Clear filters</button>
+            </div>
+          )}
+          {workspace.dismissed.length > 0 && (
+            <div className="feedback-toolbar">
+              <span>{workspace.dismissed.length} marked less relevant</span>
+              <button disabled={!ready} onClick={() => setFeedbackAction({ kind: "reset" })}>
+                Reset relevance feedback
+              </button>
+            </div>
+          )}
           <div className="list-labels" aria-hidden="true">
             <span>COMPETITION</span>
             <span>{view === "Saved" && savedView === "archive" ? "ENDED" : "DATE"}</span>
@@ -671,6 +740,10 @@ export function Dashboard({
                 onCompare={() => toggleComparison(item.id)}
                 onSave={() => toggleSaved(item.id)}
                 onDismiss={() => toggleDismissed(item.id)}
+                onTopic={(topic) => {
+                  setSelectedTopics((previous) => [...new Set([...previous, topic])]);
+                  setLimit(18);
+                }}
                 onOpen={() => setSelectedId(item.id)}
               />
             ))}
@@ -691,46 +764,63 @@ export function Dashboard({
               }
             />
           ))}
-          {!visible.length && !unavailable.length && (
-            <div className="empty-state">
-              <h2>
-                {view === "New" && !hasFilters
-                  ? "No new competitions"
-                  : view === "Saved" && !hasFilters
-                    ? savedView === "archive"
-                      ? "No archived competitions"
-                      : "No saved competitions"
-                    : !items.length
-                      ? "No competitions available"
-                      : "No matching competitions"}
-              </h2>
+          {view === "Less relevant" && missingFeedbackIds.length > 0 && !hasFilters && (
+            <div className="missing-feedback">
               <p>
-                {view === "New" && !hasFilters
-                  ? "New discoveries will appear here after your next source update."
-                  : view === "Saved" && !hasFilters
-                    ? savedView === "archive"
-                      ? "Ended saved competitions will appear here automatically. Your notes are kept."
-                      : "Use the bookmark beside a competition to save it here."
-                    : !items.length
-                      ? "Check source coverage or try refreshing the catalog."
-                      : "Try a different search or clear the filters."}
+                These marked listings are no longer in the catalog. You can still restore their
+                feedback.
               </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (!items.length) setCoverageOpen(true);
-                  else if (hasFilters) clearFilters();
-                  else changeView("All competitions");
-                }}
-              >
-                {!items.length
-                  ? "View coverage"
-                  : hasFilters
-                    ? "Clear filters"
-                    : "Browse competitions"}
-              </Button>
+              {missingFeedbackIds.map((id) => (
+                <div key={id}>
+                  <span>{id}</span>
+                  <button onClick={() => toggleDismissed(id)}>Restore feedback for {id}</button>
+                </div>
+              ))}
             </div>
           )}
+          {!visible.length &&
+            !unavailable.length &&
+            !(view === "Less relevant" && missingFeedbackIds.length > 0 && !hasFilters) && (
+              <div className="empty-state">
+                <h2>
+                  {view === "Less relevant" && !hasFilters
+                    ? "No relevance feedback"
+                    : view === "New" && !hasFilters
+                      ? "No new competitions"
+                      : view === "Saved" && !hasFilters
+                        ? savedView === "archive"
+                          ? "No archived competitions"
+                          : "No saved competitions"
+                        : !items.length
+                          ? "No competitions available"
+                          : "No matching competitions"}
+                </h2>
+                <p>
+                  {view === "Less relevant" && !hasFilters
+                    ? "Competitions you mark less relevant will appear here. Restore them individually or reset all feedback."
+                    : view === "New" && !hasFilters
+                      ? "New discoveries will appear here after your next source update."
+                      : view === "Saved" && !hasFilters
+                        ? savedView === "archive"
+                          ? "Ended saved competitions will appear here automatically. Your notes are kept."
+                          : "Use the bookmark beside a competition to save it here."
+                        : !items.length
+                          ? "Check source coverage or try refreshing the catalog."
+                          : "Try a different search or clear the filters."}
+                </p>
+                {!hasFilters && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (!items.length) setCoverageOpen(true);
+                      else changeView("All competitions");
+                    }}
+                  >
+                    {!items.length ? "View coverage" : "Browse competitions"}
+                  </Button>
+                )}
+              </div>
+            )}
           {visible.length > limit && (
             <div className="load-more">
               <span>
@@ -757,20 +847,36 @@ export function Dashboard({
           </span>
         </footer>
       </main>
-      {(saveStatus || syncMessage) && (
+      {(saveStatus || syncMessage || undoItem) && (
         <div
           className={`status-toast ${unsynced ? "warning" : ""}`}
           role="status"
           aria-live="polite"
         >
           {syncing ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-          <span>{unsynced ? saveStatus : syncMessage || saveStatus}</span>
+          <span>
+            {unsynced
+              ? saveStatus
+              : undoItem
+                ? `Marked less relevant: ${undoItem.title}`
+                : syncMessage || saveStatus}
+          </span>
+          {undoItem && (
+            <button
+              onClick={() => {
+                if (toggleDismissed(undoItem.id)) setFeedbackUndo(null);
+              }}
+            >
+              Undo
+            </button>
+          )}
           {unsynced && <button onClick={() => store.retry()}>Retry save</button>}
           <button
             aria-label="Dismiss status"
             onClick={() => {
               store.dismissStatus();
               setSyncMessage("");
+              setFeedbackUndo(null);
             }}
           >
             <X size={14} />
@@ -797,6 +903,55 @@ export function Dashboard({
           canAsk={canAsk}
           returnFocus={() => comparisonReturnFocusRef.current}
         />
+      )}
+      {feedbackAction && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setFeedbackAction(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {feedbackAction.kind === "reset"
+                  ? "Reset relevance feedback?"
+                  : "Mark as less relevant?"}
+              </DialogTitle>
+              <DialogDescription>
+                {feedbackAction.kind === "reset"
+                  ? "Clear all your Less relevant feedback and restore normal rankings. Your saved competitions, notes, plans, and preferences will stay unchanged."
+                  : `“${feedbackAction.item.title}” will move lower in relevance rankings, not be deleted. You can reverse this with Undo feedback on its card or Reset relevance feedback.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setFeedbackAction(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const saved = persist((previous) => ({
+                    ...previous,
+                    dismissed:
+                      feedbackAction.kind === "reset"
+                        ? []
+                        : [...new Set([...previous.dismissed, feedbackAction.item.id])],
+                  }));
+                  if (saved) {
+                    setFeedbackUndo(
+                      feedbackAction.kind === "dismiss"
+                        ? { id: feedbackAction.item.id, title: feedbackAction.item.title }
+                        : null,
+                    );
+                    setFeedbackAction(null);
+                  }
+                }}
+              >
+                {feedbackAction.kind === "reset" ? "Reset feedback" : "Mark less relevant"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
       {preferencesOpen && (
         <PreferencesDialog

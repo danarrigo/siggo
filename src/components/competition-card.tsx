@@ -46,6 +46,7 @@ export function CompetitionCard({
   onCompare,
   onSave,
   onDismiss,
+  onTopic,
   onOpen,
 }: {
   item: Competition;
@@ -62,6 +63,7 @@ export function CompetitionCard({
   onCompare: () => void;
   onSave: () => void;
   onDismiss: () => void;
+  onTopic: (topic: string) => void;
   onOpen: () => void;
 }) {
   const archived = !isActive(item, now);
@@ -130,6 +132,15 @@ export function CompetitionCard({
           {item.description ||
             "Task details and participation rules are on the official event page."}
         </p>
+        {item.tags.length > 0 && (
+          <div className="competition-tags" aria-label={`Topics for ${item.title}`}>
+            {[...new Set(item.tags)].map((tag) => (
+              <button key={tag} onClick={() => onTopic(tag)} aria-label={`Filter by topic: ${tag}`}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="competition-details">
           <span>{item.participation}</span>
           <button

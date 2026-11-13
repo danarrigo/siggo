@@ -154,6 +154,15 @@ test("add, note, reload, edit, remind, and delete a private manual competition",
     .getByRole("dialog")
     .getByRole("button", { name: "Delete listing", exact: true })
     .click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("This cannot be undone");
+  await page.getByRole("dialog").getByRole("button", { name: "Keep listing", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").getByRole("button", { name: "Confirm delete", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete listing", exact: true })
+    .click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Confirm delete", exact: true })

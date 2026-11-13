@@ -282,7 +282,10 @@ export function ManualCompetitionDialog({
             )}
             {deleting ? (
               <div className="delete-confirmation" role="alert">
-                <p>Delete this listing, its bookmark, and its note?</p>
+                <p>
+                  Delete “{entry?.title}”, its bookmark, note, and participation plan? This cannot
+                  be undone.
+                </p>
                 <div className="dialog-actions">
                   <Button type="button" variant="outline" onClick={() => setDeleting(false)}>
                     Keep listing

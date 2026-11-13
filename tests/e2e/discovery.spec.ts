@@ -66,6 +66,10 @@ test("save, dismiss and edit preferences, preserving them across reloads", async
       exact: true,
     })
     .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Mark less relevant", exact: true })
+    .click();
   await expect(
     page.getByRole("button", {
       name: "Undo less relevant for Neural Arena: Multi-agent Simulation",
